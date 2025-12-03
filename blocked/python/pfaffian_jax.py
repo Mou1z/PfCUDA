@@ -1,11 +1,16 @@
 import jax
 import jax.numpy as jnp
-from jax import lax, debug
+from jax import lax
+
+jax.config.update("jax_enable_x64", True)
 
 @jax.jit
 def pfaffian(A):
     result = 1.0
     n = A.shape[0]
+
+    if n == 2:
+        return A[0, 1]
 
     V = jnp.zeros((n, n - 2))
     W = jnp.zeros((n, n - 2))
@@ -15,7 +20,6 @@ def pfaffian(A):
         A, V, W = data
 
         VWt = V @ W.T
-
         dVW = VWt - VWt.T
         dAk = A[k] + dVW[k]
 
