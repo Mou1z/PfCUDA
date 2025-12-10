@@ -19,14 +19,12 @@ def pfaffian(A):
         k = i * 2
         A, V, W = data
 
-        VWt = V @ W.T
-        dVW = VWt - VWt.T
-        dAk = A[k] + dVW[k]
+        uAk = A[k] + ((V[k] @ W.T) - (W[k] @ V.T))
 
         idx = jnp.arange(n)
         mask = idx >= (k + 2)
-        V = V.at[:, k].set(jnp.where(mask, dAk / dAk[k+1], 0.0))
-        W = W.at[:, k].set(A[:, k + 1] + dVW[:, k + 1])
+        V = V.at[:, k].set(jnp.where(mask, uAk / uAk[k+1], 0.0))
+        W = W.at[:, k].set(A[:, k + 1] + ((W[k + 1] @ V.T) - (V[k + 1] @ W.T)))
 
         return A, V, W
 

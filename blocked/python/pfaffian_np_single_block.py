@@ -7,7 +7,6 @@ np.set_printoptions(
     threshold=1000
 )
 
-
 def pfaffian(A):
     result = 1.0
     n = A.shape[0]
@@ -18,29 +17,24 @@ def pfaffian(A):
     W = np.zeros((n, blockSize))
 
     for k in range(0, blockSize, 2):
-        # kp = k + 1 + np.abs(A[k, k + 1:]).argmax()
+        kp = k + 1 + np.abs(A[k, k + 1:]).argmax()
 
-        # if kp != k + 1:
-        #     A[[k+1, kp], :] = A[[kp, k+1], :]
-        #     A[:, [k+1, kp]] = A[:, [kp, k+1]]
+        if kp != k + 1:
+            A[[k+1, kp], :] = A[[kp, k+1], :]
+            A[:, [k+1, kp]] = A[:, [kp, k+1]]
 
-        #     V[[k+1, kp], :] = V[[kp, k+1], :]
-        #     W[[k+1, kp], :] = W[[kp, k+1], :]
+            V[[k+1, kp], :] = V[[kp, k+1], :]
+            W[[k+1, kp], :] = W[[kp, k+1], :]
 
-        #     result *= -1
+            result *= -1
 
-        VWt = V @ W.T
+        uAk = A[k] + ((V[k] @ W.T) - (W[k] @ V.T))
 
-        dVW = VWt - VWt.T
-        dAk = A[k] + dVW[k]
-
-        V[k + 2:, k] = dAk[k + 2:] / dAk[k + 1]
-        W[:, k] = A[:, k + 1] + dVW[:, k + 1]
+        V[k + 2:, k] = uAk[k + 2:] / uAk[k + 1]
+        W[:, k] = A[:, k + 1] + ((W[k + 1] @ V.T) - (V[k + 1] @ W.T))
 
     VWt = V @ W.T
     fA = A + (VWt - VWt.T)
-
-    print(fA)
 
     for k in range(0, n, 2):
         result *= fA[k, k + 1]

@@ -7,43 +7,37 @@ np.set_printoptions(
     threshold=1000
 )
 
-def pfaffian(A, blockSize = 4):
+
+def pfaffian(A):
     result = 1.0
     n = A.shape[0]
+    
+    blockSize = n - 2
+    
+    V = np.zeros((n, blockSize))
+    W = np.zeros((n, blockSize))
 
-    for i in range(0, n, blockSize):
+    # print(np.triu(A, k = 1))
 
-        V = np.zeros((n, blockSize))
-        W = np.zeros((n, blockSize))
+    for k in range(0, blockSize, 2):
+        print(V[:, :k], W.T[:, :k])
+        VWt = V[:, :k] @ W.T[:, :k]
 
-        remRows = blockSize
-        if i + remRows > n:
-            remRows = n - i
+        dVW = VWt - VWt.T
+        dAk = A[k] + dVW[k]
 
-        for j in range(0, remRows, 2): 
-            k = i + j
+        V[k + 2:, k] = dAk[k + 2:] / dAk[k + 1]
+        W[:, k] = A[:, k + 1] + dVW[:, k + 1]
 
-            VWt = V @ W.T
+    VWt = V @ W.T
+    fA = A + (VWt - VWt.T)
 
-            dVW = VWt - VWt.T
-            dAk = A[k] + dVW[k]
+    print(fA)
 
-            V[k + 2:, j] = dAk[k + 2:] / dAk[k + 1]
-            W[:, j] = A[:, k + 1] + dVW[:, k + 1]
-
-        VWt = V @ W.T
-        fA = A + (VWt - VWt.T)
-
-        A = fA
-
-        for j in range(0, remRows, 2): 
-            k = i + j
-
-            print(fA[k, k + 1])
-
-            result *= fA[k, k + 1]
-
-    return result
+    # for k in range(0, n, 2):
+    #     result *= fA[k, k + 1]
+    
+    # return result
     
 A = np.array([
     [  0,   1,   2,   3,   4,   5,   6,   7,   8,   9],
