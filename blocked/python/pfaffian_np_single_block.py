@@ -28,9 +28,9 @@ def pfaffian(A):
 
             result *= -1
 
-        uAk = A[k] + ((V[k] @ W.T) - (W[k] @ V.T))
+        uAk = A[k, k + 1:] + ((V[k] @ W.T[:, k + 1:]) - (W[k] @ V.T[:, k + 1:]))
 
-        V[k + 2:, k] = uAk[k + 2:] / uAk[k + 1]
+        V[k + 2:, k] = uAk[1:] / uAk[0]
         W[:, k] = A[:, k + 1] + ((W[k + 1] @ V.T) - (V[k + 1] @ W.T))
 
     VWt = V @ W.T

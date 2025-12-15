@@ -5,18 +5,7 @@ import jax.numpy as jnp
 from scipy.linalg import schur
 
 from pfaffian_jax import pfaffian as pfaffian_py
-
-def pfaffian_naive(matrix):
-    if matrix.shape[0] == 0:
-        return 1.0
-
-    if matrix.shape[0] % 2 == 1:
-        return 0.0
-
-    blocks, O = schur(matrix)
-    a = np.diag(blocks, 1)[::2]
-
-    return np.prod(a) * np.linalg.det(O)
+from pfapack.pfaffian import pfaffian as pfaffian_naive
 
 def pfaffian_tridiag(upper_diag):
     n = len(upper_diag) + 1
