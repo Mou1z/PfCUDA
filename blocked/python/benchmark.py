@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 # -------------------------------
 # Configuration
 # -------------------------------
-MATRIX_SIZES = [50, 100, 150, 200, 250, 300, 500, 1000, 1500, 2000, 2500, 3000]
+MATRIX_SIZES = [50, 100, 150, 200, 250, 300, 500, 1000, 1500, 3000]
 REPEATS = 5
 JSON_FILE = "benchmark_results.json"
 
@@ -116,9 +116,9 @@ def plot_results(latest_results):
 
 
 if __name__ == "__main__":
-    # from pfaffian_np_single_block import pfaffian
+    from pfaffian_np_single_block import pfaffian
     # from pfapack.pfaffian import pfaffian
-    from pfaffian_jax import pfaffian
+    # from pfaffian_jax import pfaffian
     # from pfaffian_basic import pfaffian
 
     backend = "numpy"
