@@ -30,24 +30,11 @@ def pfaffian(A):
 
         uAk = A[k, k + 1:] + ((V[k] @ W.T[:, k + 1:]) - (W[k] @ V.T[:, k + 1:]))
 
-        # print('V = ', V)
-        # print('W = ', W)
-        # print('_____')
-        # print(f"V[{k}] = ", V[k]) 
-        # print(f"W.T[:, {k + 1}:] = ", W.T[:, k + 1:])
-        # print(V[k] @ W.T[:, k + 1:])
-        # print('_____')
-        # print(f"W[{k}] = ", W[k])
-        # print(f"V.T[:, {k + 1}:] = ", V.T[:, k + 1:])
-        # print((W[k] @ V.T[:, k + 1:]))
-        # print('__________')
-        # print('\n\n\n')
-
         V[k + 2:, k] = uAk[1:] / uAk[0]
         W[:, k] = A[:, k + 1] + ((W[k + 1] @ V.T) - (V[k + 1] @ W.T))
 
     for k in range(0, n, 2):
-        diff = (V[k] @ W.T[:, k + 1]) - (W[k] @ V.T[:, k + 1])
+        diff = (V[k] @ W.T[:, k + 1]) - (V[k + 1] @ W.T[:, k])
         result *= A[k, k + 1] + diff
     
     return result

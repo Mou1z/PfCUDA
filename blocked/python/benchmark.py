@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 # -------------------------------
 # Configuration
 # -------------------------------
-MATRIX_SIZES = [50, 100, 150, 200, 250, 300, 500, 1000, 1500, 3000]
+MATRIX_SIZES = [50, 100, 150, 200, 250, 300, 500, 1000, 1500, 2000, 3000]
 REPEATS = 5
 JSON_FILE = "benchmark_results.json"
 

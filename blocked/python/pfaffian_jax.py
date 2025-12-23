@@ -6,7 +6,6 @@ jax.config.update("jax_enable_x64", True)
 
 @jax.jit
 def pfaffian(A):
-    result = 1.0
     n = A.shape[0]
 
     if n == 2:
@@ -30,10 +29,11 @@ def pfaffian(A):
 
     _, V, W = lax.fori_loop(0, (n // 2) - 1, calc_vector_blocks, (A, V, W))
 
-    VWt = V @ W.T
-    fA = A + (VWt - VWt.T)
-    
-    result = jnp.prod(fA[jnp.arange(0, n, 2), jnp.arange(1, n, 2)])
+    V_pairs = V.reshape(-1, 2, V.shape[1])
+    W_pairs = W.reshape(-1, 2, W.shape[1])
+
+    diffs = jnp.sum(V_pairs[:,0] * W_pairs[:,1] - V_pairs[:,1] * W_pairs[:,0], axis=1)
+    result = jnp.prod(A[0::2, 1::2].diagonal() + diffs)
 
     return result
 
