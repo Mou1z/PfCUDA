@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 # -------------------------------
 # Configuration
 # -------------------------------
-MATRIX_SIZES = [50, 100, 150, 200, 250, 300, 500, 1000, 1500, 2000, 3000]
+MATRIX_SIZES = range(2, 200, 2)
 REPEATS = 5
 JSON_FILE = "benchmark_results.json"
 
@@ -31,27 +31,35 @@ def generate_skew_symmetric(n, backend="numpy", key=None):
 def benchmark_function(func, n, backend="numpy", key=None):
     """
     Benchmarks a single function on a single matrix size.
-    Handles warm-up and multiple repeats.
+    Correctly handles NumPy (CPU, synchronous) and JAX (GPU, asynchronous).
+    Compilation time is excluded.
     """
     A = generate_skew_symmetric(n, backend=backend, key=key)
 
-    # Convert to NumPy array if the function is NumPy-only
+    # If function is NumPy-only but backend is JAX, convert explicitly
     if backend == "jax" and "numpy" in func.__module__:
         A = np.array(A)
 
-    # Warm-up
-    func(A)
+    # -------------------------
+    # Warm-up / compilation
+    # -------------------------
+    y = func(A)
+    if backend == "jax":
+        y.block_until_ready()  # forces compilation + execution
 
+    # -------------------------
+    # Timed runs
+    # -------------------------
     times = []
     for _ in range(REPEATS):
         start = time.perf_counter()
-        func(A)
+        y = func(A)
+        if backend == "jax":
+            y.block_until_ready()  # forces real execution time
         end = time.perf_counter()
         times.append(end - start)
 
-    avg_time = float(np.mean(times))
-    return avg_time
-
+    return float(np.mean(times))
 
 def run_benchmarks(func, backend="numpy"):
     """
@@ -109,19 +117,19 @@ def plot_results(latest_results):
     plt.ylabel("Execution time (seconds)")
     plt.title("Pfaffian Benchmark")
     plt.grid(True)
-    plt.legend()
+    # plt.legend()
     plt.savefig("benchmark_plot.png", dpi=200)
     print("Graph saved to benchmark_plot.png")
     plt.show()
 
 
 if __name__ == "__main__":
-    from pfaffian_np_single_block import pfaffian
+    # from pfaffian_np_single_block import pfaffian
     # from pfapack.pfaffian import pfaffian
-    # from pfaffian_jax import pfaffian
+    from pfaffian_jax import pfaffian
     # from pfaffian_basic import pfaffian
 
-    backend = "numpy"
+    backend = "jax"
 
     results = run_benchmarks(pfaffian, backend=backend)
     results_str_keys = {str(k): v for k, v in results.items()}
