@@ -29,7 +29,7 @@ def random_skew_symmetric(n):
 
 def time_jax_function(func, A, runs):
     # Convert numpy array to jax array
-    A_jax = jnp.array(A)
+    A_jax = jnp.array(A, dtype=jnp.float64)
     # Warm-up to trigger JIT compilation
     func(A_jax).block_until_ready()
 

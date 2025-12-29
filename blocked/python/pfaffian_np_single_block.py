@@ -11,12 +11,12 @@ def pfaffian(A):
     result = 1.0
     n = A.shape[0]
     
-    blockSize = n - 2
+    blockSize = (n - 2) // 2
     
     V = np.zeros((n, blockSize))
     W = np.zeros((n, blockSize))
 
-    for k in range(0, blockSize, 2):
+    for i, k in enumerate(range(0, blockSize * 2, 2)):
         kp = k + 1 + np.abs(A[k, k + 1:]).argmax()
 
         if kp != k + 1:
@@ -30,16 +30,20 @@ def pfaffian(A):
 
         uAk = A[k, k + 1:] + ((V[k] @ W.T[:, k + 1:]) - (W[k] @ V.T[:, k + 1:]))
 
-        V[k + 2:, k] = uAk[1:] / uAk[0]
-        W[:, k] = A[:, k + 1] + ((W[k + 1] @ V.T) - (V[k + 1] @ W.T))
+        V[k + 2:, i] = uAk[1:] / uAk[0]
+        W[:, i] = A[:, k + 1] + ((W[k + 1] @ V.T) - (V[k + 1] @ W.T))
 
-    print(V)
-    print(W)
-    print(W.T)
+    k_indices = np.arange(0, n, 2)
 
-    for k in range(0, n, 2):
-        diff = (V[k] @ W[k + 1]) - (V[k + 1] @ W[k])
-        result *= A[k, k + 1] + diff
+    V_k   = V[k_indices]
+    V_k1  = V[k_indices + 1]
+
+    W_k   = W[k_indices]
+    W_k1  = W[k_indices + 1]
+
+    diffs = np.einsum('ij,ij->i', V_k, W_k1) - np.einsum('ij,ij->i', V_k1, W_k)
+    f_k = A[k_indices, k_indices + 1] + diffs
+    result *= np.prod(f_k)
     
     return result
     

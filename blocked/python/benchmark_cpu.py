@@ -4,6 +4,7 @@ import json
 import os
 import matplotlib.pyplot as plt
 from datetime import datetime
+# from pfaffian_simple import pfaffian
 from pfaffian_np_single_block import pfaffian
 
 
@@ -12,7 +13,7 @@ from pfaffian_np_single_block import pfaffian
 # ----------------------------
 RESULTS_FILE = "pfaffian_benchmark.json"
 
-MATRIX_SIZES = [100, 200, 300, 400, 500, 1000, 1500, 2000, 2500, 3000]
+MATRIX_SIZES = range(2, 501, 2)
 RUNS_PER_SIZE = 5
 
 PLOT_DIR = "benchmarks"
