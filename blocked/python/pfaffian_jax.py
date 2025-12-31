@@ -12,23 +12,25 @@ def pfaffian(A):
     if n == 2:
         return A[0, 1]
 
-    V = jnp.zeros((n, n - 2))
-    W = jnp.zeros((n, n - 2))
+    blockSize = (n - 2) // 2
 
-    def calc_vector_blocks(i, data):
-        k = i * 2
-        A, V, W = data
+    V = jnp.zeros((n, blockSize))
+    W = jnp.zeros((n, blockSize))
+
+    def calc_vector_blocks(data, k):
+        i = k // 2
+        V, W = data
 
         uAk = A[k] + ((V[k] @ W.T) - (W[k] @ V.T))
 
         idx = jnp.arange(n)
         mask = idx >= (k + 2)
-        V = V.at[:, k].set(jnp.where(mask, uAk / uAk[k+1], 0.0))
-        W = W.at[:, k].set(A[:, k + 1] + ((W[k + 1] @ V.T) - (V[k + 1] @ W.T)))
+        V = V.at[:, i].set(jnp.where(mask, uAk / uAk[k+1], 0.0))
+        W = W.at[:, i].set(A[:, k + 1] + ((W[k + 1] @ V.T) - (V[k + 1] @ W.T)))
 
-        return A, V, W
+        return (V, W), None
 
-    _, V, W = lax.fori_loop(0, (n // 2) - 1, calc_vector_blocks, (A, V, W))
+    (V, W), _ = lax.scan(calc_vector_blocks, (V, W), jnp.arange(0, blockSize * 2, 2))
 
     V_pairs = V.reshape(-1, 2, V.shape[1])
     W_pairs = W.reshape(-1, 2, W.shape[1])
@@ -50,6 +52,6 @@ A = jnp.array([
     [ -7, -16, -27, -37, -47, -57, -67,   0,  78,  79],
     [ -8, -17, -28, -38, -48, -58, -68, -78,   0,  89],
     [ -9, -18, -29, -39, -49, -59, -69, -79, -89,   0]
-])
+], dtype = jnp.float64)
 
 print('Pfaffian:', pfaffian(A))

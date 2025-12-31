@@ -1,4 +1,6 @@
 import jax
+jax.config.update("jax_enable_x64", True)
+
 import jax.numpy as jnp
 from jax import lax
 import numpy as np
@@ -7,14 +9,16 @@ import json
 import os
 import matplotlib.pyplot as plt
 from datetime import datetime
-from pfaffian_jax import pfaffian  # Your JAX Pfaffian function
+# from pfaffian_jax import pfaffian  # Your JAX Pfaffian function
+from pfaffian_jax_naive import pfaffian
+# from pfaffian_det_based import pfaffian
 
 # ----------------------------
 # BENCHMARK CONFIG
 # ----------------------------
 RESULTS_FILE = "pfaffian_benchmark.json"
 
-MATRIX_SIZES = [100, 200, 300, 400, 500, 1000, 1500, 2000, 2500, 3000]
+MATRIX_SIZES = [100, 200, 300, 400, 500, 1000, 1500, 2000, 2500, 3000, 5000]
 RUNS_PER_SIZE = 5
 
 PLOT_DIR = "benchmarks"

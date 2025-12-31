@@ -5,15 +5,15 @@ import os
 import matplotlib.pyplot as plt
 from datetime import datetime
 # from pfaffian_simple import pfaffian
-from pfaffian_np_single_block import pfaffian
-
+# from pfaffian_np_single_block import pfaffian
+from pfaffian_np_single_block_op import pfaffian
 
 # ----------------------------
 # BENCHMARK CONFIG
 # ----------------------------
 RESULTS_FILE = "pfaffian_benchmark.json"
 
-MATRIX_SIZES = range(2, 501, 2)
+MATRIX_SIZES = range(2, 200, 2)
 RUNS_PER_SIZE = 5
 
 PLOT_DIR = "benchmarks"
