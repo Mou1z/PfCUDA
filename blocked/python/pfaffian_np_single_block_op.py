@@ -28,7 +28,7 @@ def pfaffian(A):
 
             result *= -1
 
-        vectorUpdates = (V[k:k+2] @ W.T) - (W[k:k+2] @ V.T)
+        vectorUpdates = (V[k:k+2, :i] @ W.T[:i]) - (W[k:k+2, :i] @ V.T[:i])
 
         dAk = A[k, k + 1:] + vectorUpdates[0][k + 1:]
 

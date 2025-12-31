@@ -28,22 +28,21 @@ def pfaffian(A):
 
             result *= -1
 
-        uAk = A[k, k + 1:] + ((V[k] @ W.T[:, k + 1:]) - (W[k] @ V.T[:, k + 1:]))
+        dAk = A[k, k + 1:] + (V[k, :i] @ W.T[:i, k + 1:]) - (W[k, :i + 1] @ V.T[:i + 1, k + 1:])
 
-        V[k + 2:, i] = uAk[1:] / uAk[0]
-        W[:, i] = A[:, k + 1] + ((W[k + 1] @ V.T) - (V[k + 1] @ W.T))
+        V[k + 2:, i] = dAk[1:] / dAk[0]
+        W[:, i] = A[:, k + 1] + (W[k + 1, :i + 1] @ V.T[:i + 1]) - (V[k + 1, :i] @ W.T[:i])
 
-    k_indices = np.arange(0, n, 2)
 
-    V_k   = V[k_indices]
-    V_k1  = V[k_indices + 1]
+    k_even = np.arange(0, n, 2)
+    k_odd = k_even + 1
 
-    W_k   = W[k_indices]
-    W_k1  = W[k_indices + 1]
+    V0, V1 = V[k_even], V[k_odd]
+    W0, W1 = W[k_even], W[k_odd]
 
-    diffs = np.einsum('ij,ij->i', V_k, W_k1) - np.einsum('ij,ij->i', V_k1, W_k)
-    f_k = A[k_indices, k_indices + 1] + diffs
-    result *= np.prod(f_k)
+    updates = np.einsum('ij,ij->i', V0, W1) - np.einsum('ij,ij->i', V1, W0)
+    dA = A[k_even, k_odd] + updates
+    result *= np.prod(dA)
     
     return result
     
