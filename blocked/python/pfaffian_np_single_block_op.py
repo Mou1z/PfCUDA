@@ -28,10 +28,12 @@ def pfaffian(A):
 
             result *= -1
 
-        dAk = A[k, k + 1:] + (V[k, :i] @ W.T[:i, k + 1:]) - (W[k, :i + 1] @ V.T[:i + 1, k + 1:])
+        vectorUpdates = (V[k:k+2] @ W.T) - (W[k:k+2] @ V.T)
+
+        dAk = A[k, k + 1:] + vectorUpdates[0][k + 1:]
 
         V[k + 2:, i] = dAk[1:] / dAk[0]
-        W[:, i] = A[:, k + 1] + (W[k + 1, :i + 1] @ V.T[:i + 1]) - (V[k + 1, :i] @ W.T[:i])
+        W[:, i] = A[:, k + 1] - vectorUpdates[1]
 
 
     k_even = np.arange(0, n, 2)

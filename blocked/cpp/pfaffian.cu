@@ -1,6 +1,9 @@
 #include <iostream>
 
 double pfaffian(double ** A, long n) {
+    cublasHandle_t handle;
+    cublasCreate(&handle);
+
     double result = 1.0;
 
     long blockSize = (n - 2) / 2;
