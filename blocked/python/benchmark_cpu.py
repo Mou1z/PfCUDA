@@ -13,7 +13,7 @@ from pfaffian_np_single_block import pfaffian
 # ----------------------------
 RESULTS_FILE = "pfaffian_benchmark.json"
 
-MATRIX_SIZES = [200, 400, 600, 800, 1200, 1500, 2000]
+MATRIX_SIZES = range(2, 101, 2) #[200, 400, 600, 800, 1200, 1500, 2000]
 RUNS_PER_SIZE = 7
 
 PLOT_DIR = "benchmarks"

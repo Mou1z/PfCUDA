@@ -20,13 +20,17 @@ def pfaffian(A):
     def calc_vector_blocks(data, k):
         i = k // 2
         V, W = data
-
-        uAk = A[k] + ((V[k] @ W.T) - (W[k] @ V.T))
+        
+        V0 = lax.dynamic_slice(V, [k, 0], (2, blockSize))
+        W0 = lax.dynamic_slice(W, [k, 0], (2, blockSize))
+        vectorUpdates = (V0 @ W.T) - (W0 @ V.T)
+        
+        uAk = A[k] + vectorUpdates[0]
 
         idx = jnp.arange(n)
         mask = idx >= (k + 2)
         V = V.at[:, i].set(jnp.where(mask, uAk / uAk[k+1], 0.0))
-        W = W.at[:, i].set(A[:, k + 1] + ((W[k + 1] @ V.T) - (V[k + 1] @ W.T)))
+        W = W.at[:, i].set(A[:, k + 1] - vectorUpdates[1])
 
         return (V, W), None
 
@@ -39,7 +43,6 @@ def pfaffian(A):
     result = jnp.prod(A[0::2, 1::2].diagonal() + diffs)
 
     return result
-
     
 A = jnp.array([
     [  0,   1,   2,   3,   4,   5,   6,   7,   8,   9],

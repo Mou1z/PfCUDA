@@ -33,8 +33,7 @@ def pfaffian(A):
         dAk = A[k, k + 1:] + vectorUpdates[0][k + 1:]
 
         V[k + 2:, i] = dAk[1:] / dAk[0]
-        W[:, i] = A[:, k + 1] - vectorUpdates[1]
-
+        W[k + 2:, i] = A[k + 2:, k + 1] - vectorUpdates[1][k + 2:]
 
     k_even = np.arange(0, n, 2)
     k_odd = k_even + 1

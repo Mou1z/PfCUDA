@@ -9,8 +9,8 @@ import json
 import os
 import matplotlib.pyplot as plt
 from datetime import datetime
-# from pfaffian_jax import pfaffian  # Your JAX Pfaffian function
-from pfaffian_jax_naive import pfaffian
+from pfaffian_jax import pfaffian  # Your JAX Pfaffian function
+# from pfaffian_jax_naive import pfaffian
 # from pfaffian_det_based import pfaffian
 
 # ----------------------------
