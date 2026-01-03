@@ -17,19 +17,14 @@ __global__ void updateV(
     int i,
     int n
 ) {
-    extern __shared__ double shared[];
-    double& k1 = shared[0];
 
-    int index = k + 1 + blockIdx.x * blockDim.x + threadIdx.x;
+    int rawIndex = blockIdx.x * blockDim.x + threadIdx.x;
+    int index = k + 1 + rawIndex;
 
-    if (index == k + 1) {
-        k1 = CM(A, n, k, k + 1);
-    }
+    double k1 = CM(A, n, k, k + 1) + CM(R, 2, 1, 0);
 
-    __syncthreads();
-
-    if (index < n) {
-        CM(V, n, index, i) = CM(A, n, k, index) / k1;
+    if ((k + 1 < index) && (index < n)) {
+        CM(V, n, index, i) = (CM(A, n, k, index) + CM(R, 2, 1, rawIndex));
     }
 }
 
@@ -41,10 +36,11 @@ __global__ void updateW(
     int i,
     int n
 ) {
-    int index = k + 2 + blockIdx * blockDim.x + threadIdx.x;
+    int rawIndex = blockIdx.x * blockDim.x + threadIdx.x;
+    int index = k + 2 + rawIndex;
 
     if(index < n) {
-        CM(W, n, index, i) = CM(A, n, index, k + 1)
+        CM(W, n, index, i) = CM(A, n, index, k + 1) - CM(R, 2, 0, rawIndex);
     }
 }
 
@@ -67,31 +63,67 @@ double pfaffian(const double * _A, const long n) {
     int i;
     double alpha, beta;
 
-    int threadsPerBlock = 256, blocks;
+    int threadsPerBlock = 256, blocks, elements;
 
     for(int k = 0; k < n - 2; k += 2) {
         i = k / 2;
 
-        blocks = getMinimumBlocks(n - k + 1, threadsPerBlock);
-        updateV<<<blocks, threadsPerBlock, sizeof(double)>>>(A, R, V, k, i, n);
+        std::cout << "k = " << k << std::endl;
 
-        blocks = getMinimumBlocks(n - k + 2, threadsPerBlock);
+        elements = n - (k + 1);
+
+        alpha = 1.0; beta = 0.0;
+        cublasDgemm(handle, CUBLAS_OP_N, CUBLAS_OP_T, 2, elements, i, &alpha, V + k, n, W + k + 1, n, &beta, R, 2);
+
+        alpha = -1.0; beta = 1.0;
+        cublasDgemm(handle, CUBLAS_OP_N, CUBLAS_OP_T, 2, elements, i, &alpha, W + k, n, V + k + 1, n, &beta, R, 2);
+
+        blocks = getMinimumBlocks(elements, threadsPerBlock);
+        updateV<<<blocks, threadsPerBlock>>>(A, R, V, k, i, n);
+        
+        blocks = getMinimumBlocks(elements - 1, threadsPerBlock);
         updateW<<<blocks, threadsPerBlock>>>(A, R, W, k, i, n);
-    }
 
-    std::vector<double> V_host(n * blockSize);
-    cudaMemcpy(V_host.data(), V, n * blockSize * sizeof(double),
-            cudaMemcpyDeviceToHost);
+        std::vector<double> R_host(n * blockSize);
+        cudaMemcpy(R_host.data(), R, 2 * elements * sizeof(double),
+                cudaMemcpyDeviceToHost);
 
-    std::vector<double> W_host(n * blockSize);
-    cudaMemcpy(W_host.data(), W, n * blockSize * sizeof(double),
-            cudaMemcpyDeviceToHost);
+        std::vector<double> V_host(n * blockSize);
+        cudaMemcpy(V_host.data(), V, n * blockSize * sizeof(double),
+                cudaMemcpyDeviceToHost);
 
-    for(int i = 0; i < n; i++) {
-        for(int j = 0; j < blockSize; j++) {
-            std::cout << CM(W_host, n, i, j) << "\t";
+        std::vector<double> W_host(n * blockSize);
+        cudaMemcpy(W_host.data(), W, n * blockSize * sizeof(double),
+                cudaMemcpyDeviceToHost);
+
+        cudaDeviceSynchronize(); 
+
+        for(int r = 0; r < 2; r++) {
+            std::cout << "Row " << r << ": ";
+            for(int c = 0; c < elements; c++) {
+                std::cout << CM(R_host, 2, r, c) << "\t";
+            }
+            std::cout << "\n";
+        }           
+
+        std::cout << "-";
+        
+
+        for(int r = 0; r < n; r++) {
+            for(int c = 0; c < blockSize; c++) {
+                std::cout << CM(V_host, n, r, c) << "\t";
+            }
+            std::cout << "\n" << std::endl;
         }
-        std::cout << "\n" << std::endl;
+
+        for(int r = 0; r < n; r++) {
+            for(int c = 0; c < blockSize; c++) {
+                std::cout << CM(W_host, n, r, c) << "\t";
+            }
+            std::cout << "\n" << std::endl;
+        }
+
+        std::cout << "--------------------\n" << std::endl;
     }
 
     return 0;

@@ -17,16 +17,16 @@ def pfaffian(A):
     W = np.zeros((n, blockSize))
 
     for i, k in enumerate(range(0, blockSize * 2, 2)):
-        kp = k + 1 + np.abs(A[k, k + 1:]).argmax()
+        # kp = k + 1 + np.abs(A[k, k + 1:]).argmax()
 
-        if kp != k + 1:
-            A[[k+1, kp], :] = A[[kp, k+1], :]
-            A[:, [k+1, kp]] = A[:, [kp, k+1]]
+        # if kp != k + 1:
+        #     A[[k+1, kp], :] = A[[kp, k+1], :]
+        #     A[:, [k+1, kp]] = A[:, [kp, k+1]]
 
-            V[[k+1, kp], :] = V[[kp, k+1], :]
-            W[[k+1, kp], :] = W[[kp, k+1], :]
+        #     V[[k+1, kp], :] = V[[kp, k+1], :]
+        #     W[[k+1, kp], :] = W[[kp, k+1], :]
 
-            result *= -1
+        #     result *= -1
 
         updateVectors = (V[k:k+2, :i] @ W.T[:i, k + 1:] - W[k:k+2, :i] @ V.T[:i, k + 1:])
 
