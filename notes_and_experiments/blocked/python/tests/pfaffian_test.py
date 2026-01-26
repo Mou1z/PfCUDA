@@ -1,53 +1,56 @@
-import jax
 import pytest
 import numpy as np
-import jax.numpy as jnp
-from scipy.linalg import schur
 
-from pfaffian_jax import pfaffian as pfaffian_py
-from pfapack.pfaffian import pfaffian as pfaffian_naive
+from pfaffian_op_s import pfaffian as pfaffian_py
+# from pfapack.pfaffian import pfaffian as pfaffian_py
 
 def pfaffian_tridiag(upper_diag):
     n = len(upper_diag) + 1
     if n % 2 == 1:
         return 0.0
-    return np.prod(upper_diag[0::2]) 
+    return np.prod(upper_diag[0::2])
 
-def create_orthogonal_matrix_jpy(n, key):
-    A = jax.random.normal(key, (n, n))
+def create_orthogonal_matrix_np(n, rng):
+    A = rng.normal(size=(n, n))
 
-    Q, R = jnp.linalg.qr(A)
-    
-    d = jnp.diag(R)
-    Q = Q * jnp.sign(d)
-    
+    Q, R = np.linalg.qr(A)
+
+    d = np.diag(R)
+    Q = Q * np.sign(d)
+
     return Q
 
 @pytest.mark.monkey
 def test_pfaffian_py_by_identity():
-    key = jax.random.PRNGKey(0)
-    
+    rng = np.random.default_rng(seed=0)
+
     for n in range(2, 50, 2):
         for _ in range(10):
-            key, subkey1, subkey2 = jax.random.split(key, 3)
+            main_diagonal = np.zeros(n)
 
-            main_diagonal = jnp.zeros(n)
-            alt_diagonal = 1 + jax.random.normal(subkey1, (n - 1,))
+            alt_diagonal = 1.0 + rng.normal(size=(n - 1,))
 
-            mask = 1 - (jnp.arange(n - 1) % 2)
+            mask = 1 - (np.arange(n - 1) % 2)
             alt_diagonal = alt_diagonal * mask
 
             A = (
-                jnp.diag(alt_diagonal, k = 1) +
-                jnp.diag(main_diagonal) -
-                jnp.diag(alt_diagonal, k = -1)
+                np.diag(alt_diagonal, k=1)
+                + np.diag(main_diagonal)
+                - np.diag(alt_diagonal, k=-1)
             )
+
+            print(A)
 
             pf_A = pfaffian_tridiag(alt_diagonal)
 
-            B = create_orthogonal_matrix_jpy(n, subkey2)
+            B = create_orthogonal_matrix_np(n, rng)
 
             calculated_pfaffian = pfaffian_py(B @ A @ B.T)
-            expected_pfaffian = jnp.linalg.det(B) * pf_A
+            expected_pfaffian = np.linalg.det(B) * pf_A
 
-            assert jnp.isclose(expected_pfaffian, calculated_pfaffian)
+            assert np.isclose(
+                expected_pfaffian,
+                calculated_pfaffian,
+                rtol=1e-10,
+                atol=1e-12
+            )

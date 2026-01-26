@@ -32,6 +32,7 @@ def pfaffian(A):
 
         dAk = A[k, k + 1:] + updateVectors[0]
 
+
         V[k + 2:, i] = dAk[1:] / dAk[0]
         W[k + 2:, i] = A[k + 2:, k + 1] - updateVectors[1, 1:]
 
