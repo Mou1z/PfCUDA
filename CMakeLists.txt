@@ -1,28 +1,49 @@
 cmake_minimum_required(VERSION 3.18)
-project(pfaffian_cuda LANGUAGES CXX CUDA)
-
-find_package(CUDA REQUIRED)
-find_package(pybind11 REQUIRED)
-find_package(CUDAToolkit REQUIRED)
+project(cu_pfaffian LANGUAGES CXX CUDA)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CUDA_STANDARD 17)
 
-add_library(pfaffian_cuda MODULE
-    bindings.cpp
-    pfaffian.cu
+find_package(CUDAToolkit REQUIRED)
+
+# --- 1. Locate JAX/XLA headers ---
+execute_process(
+    COMMAND python3 -c "import jax; import os; print(os.path.dirname(jax.__file__))"
+    OUTPUT_VARIABLE JAX_BASE_DIR
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+# Note: Newer JAX versions often put headers in jaxlib
+execute_process(
+    COMMAND python3 -c "import jaxlib; import os; print(os.path.dirname(jaxlib.__file__))"
+    OUTPUT_VARIABLE JAXLIB_BASE_DIR
+    OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
-target_include_directories(pfaffian_cuda PRIVATE ${CUDAToolkit_INCLUDE_DIRS})
+add_library(cu_pfaffian_lib SHARED
+    src/pfaffian.cu
+    src/pfaffian_sm.cu
+    src/jax_bindings.cu
+)
 
-target_link_libraries(pfaffian_cuda
-    PRIVATE
-    pybind11::module
-    CUDA::cublas
+# --- 2. Include Paths ---
+target_include_directories(cu_pfaffian_lib PRIVATE 
+    include
+    ${JAX_BASE_DIR}
+    ${JAXLIB_BASE_DIR}/include
+)
+
+set_target_properties(cu_pfaffian_lib PROPERTIES 
+    CUDA_SEPARABLE_COMPILATION ON
+    CUDA_RESOLVE_DEVICE_SYMBOLS ON
+    POSITION_INDEPENDENT_CODE ON
+    OUTPUT_NAME "cupfaffian"
+)
+
+target_link_libraries(cu_pfaffian_lib PRIVATE
     CUDA::cudart
 )
 
-set_target_properties(pfaffian_cuda PROPERTIES
-    PREFIX ""
-    SUFFIX ".so"
+target_compile_options(cu_pfaffian_lib PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --use_fast_math>
+    $<$<COMPILE_LANGUAGE:CXX>:-O3>
 )

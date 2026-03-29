@@ -117,65 +117,89 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named pfaffian_cuda
+# Target rules for targets named cu_pfaffian_lib
 
 # Build rule for target.
-pfaffian_cuda: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 pfaffian_cuda
-.PHONY : pfaffian_cuda
+cu_pfaffian_lib: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 cu_pfaffian_lib
+.PHONY : cu_pfaffian_lib
 
 # fast build rule for target.
-pfaffian_cuda/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pfaffian_cuda.dir/build.make CMakeFiles/pfaffian_cuda.dir/build
-.PHONY : pfaffian_cuda/fast
+cu_pfaffian_lib/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cu_pfaffian_lib.dir/build.make CMakeFiles/cu_pfaffian_lib.dir/build
+.PHONY : cu_pfaffian_lib/fast
 
-bindings.o: bindings.cpp.o
-.PHONY : bindings.o
-
-# target to build an object file
-bindings.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pfaffian_cuda.dir/build.make CMakeFiles/pfaffian_cuda.dir/bindings.cpp.o
-.PHONY : bindings.cpp.o
-
-bindings.i: bindings.cpp.i
-.PHONY : bindings.i
-
-# target to preprocess a source file
-bindings.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pfaffian_cuda.dir/build.make CMakeFiles/pfaffian_cuda.dir/bindings.cpp.i
-.PHONY : bindings.cpp.i
-
-bindings.s: bindings.cpp.s
-.PHONY : bindings.s
-
-# target to generate assembly for a file
-bindings.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pfaffian_cuda.dir/build.make CMakeFiles/pfaffian_cuda.dir/bindings.cpp.s
-.PHONY : bindings.cpp.s
-
-pfaffian.o: pfaffian.cu.o
-.PHONY : pfaffian.o
+src/jax_bindings.o: src/jax_bindings.cu.o
+.PHONY : src/jax_bindings.o
 
 # target to build an object file
-pfaffian.cu.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pfaffian_cuda.dir/build.make CMakeFiles/pfaffian_cuda.dir/pfaffian.cu.o
-.PHONY : pfaffian.cu.o
+src/jax_bindings.cu.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cu_pfaffian_lib.dir/build.make CMakeFiles/cu_pfaffian_lib.dir/src/jax_bindings.cu.o
+.PHONY : src/jax_bindings.cu.o
 
-pfaffian.i: pfaffian.cu.i
-.PHONY : pfaffian.i
+src/jax_bindings.i: src/jax_bindings.cu.i
+.PHONY : src/jax_bindings.i
 
 # target to preprocess a source file
-pfaffian.cu.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pfaffian_cuda.dir/build.make CMakeFiles/pfaffian_cuda.dir/pfaffian.cu.i
-.PHONY : pfaffian.cu.i
+src/jax_bindings.cu.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cu_pfaffian_lib.dir/build.make CMakeFiles/cu_pfaffian_lib.dir/src/jax_bindings.cu.i
+.PHONY : src/jax_bindings.cu.i
 
-pfaffian.s: pfaffian.cu.s
-.PHONY : pfaffian.s
+src/jax_bindings.s: src/jax_bindings.cu.s
+.PHONY : src/jax_bindings.s
 
 # target to generate assembly for a file
-pfaffian.cu.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/pfaffian_cuda.dir/build.make CMakeFiles/pfaffian_cuda.dir/pfaffian.cu.s
-.PHONY : pfaffian.cu.s
+src/jax_bindings.cu.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cu_pfaffian_lib.dir/build.make CMakeFiles/cu_pfaffian_lib.dir/src/jax_bindings.cu.s
+.PHONY : src/jax_bindings.cu.s
+
+src/pfaffian.o: src/pfaffian.cu.o
+.PHONY : src/pfaffian.o
+
+# target to build an object file
+src/pfaffian.cu.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cu_pfaffian_lib.dir/build.make CMakeFiles/cu_pfaffian_lib.dir/src/pfaffian.cu.o
+.PHONY : src/pfaffian.cu.o
+
+src/pfaffian.i: src/pfaffian.cu.i
+.PHONY : src/pfaffian.i
+
+# target to preprocess a source file
+src/pfaffian.cu.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cu_pfaffian_lib.dir/build.make CMakeFiles/cu_pfaffian_lib.dir/src/pfaffian.cu.i
+.PHONY : src/pfaffian.cu.i
+
+src/pfaffian.s: src/pfaffian.cu.s
+.PHONY : src/pfaffian.s
+
+# target to generate assembly for a file
+src/pfaffian.cu.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cu_pfaffian_lib.dir/build.make CMakeFiles/cu_pfaffian_lib.dir/src/pfaffian.cu.s
+.PHONY : src/pfaffian.cu.s
+
+src/pfaffian_sm.o: src/pfaffian_sm.cu.o
+.PHONY : src/pfaffian_sm.o
+
+# target to build an object file
+src/pfaffian_sm.cu.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cu_pfaffian_lib.dir/build.make CMakeFiles/cu_pfaffian_lib.dir/src/pfaffian_sm.cu.o
+.PHONY : src/pfaffian_sm.cu.o
+
+src/pfaffian_sm.i: src/pfaffian_sm.cu.i
+.PHONY : src/pfaffian_sm.i
+
+# target to preprocess a source file
+src/pfaffian_sm.cu.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cu_pfaffian_lib.dir/build.make CMakeFiles/cu_pfaffian_lib.dir/src/pfaffian_sm.cu.i
+.PHONY : src/pfaffian_sm.cu.i
+
+src/pfaffian_sm.s: src/pfaffian_sm.cu.s
+.PHONY : src/pfaffian_sm.s
+
+# target to generate assembly for a file
+src/pfaffian_sm.cu.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/cu_pfaffian_lib.dir/build.make CMakeFiles/cu_pfaffian_lib.dir/src/pfaffian_sm.cu.s
+.PHONY : src/pfaffian_sm.cu.s
 
 # Help Target
 help:
@@ -185,13 +209,16 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
-	@echo "... pfaffian_cuda"
-	@echo "... bindings.o"
-	@echo "... bindings.i"
-	@echo "... bindings.s"
-	@echo "... pfaffian.o"
-	@echo "... pfaffian.i"
-	@echo "... pfaffian.s"
+	@echo "... cu_pfaffian_lib"
+	@echo "... src/jax_bindings.o"
+	@echo "... src/jax_bindings.i"
+	@echo "... src/jax_bindings.s"
+	@echo "... src/pfaffian.o"
+	@echo "... src/pfaffian.i"
+	@echo "... src/pfaffian.s"
+	@echo "... src/pfaffian_sm.o"
+	@echo "... src/pfaffian_sm.i"
+	@echo "... src/pfaffian_sm.s"
 .PHONY : help
 
 

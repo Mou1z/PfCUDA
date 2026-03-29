@@ -1,0 +1,20 @@
+cmake_minimum_required(VERSION 3.15)
+project(pfaffian_module)
+
+set(CMAKE_CXX_STANDARD 17)
+
+find_package(pybind11 REQUIRED)
+find_package(BLAS REQUIRED)
+
+pybind11_add_module(pfaffian_module
+    bindings.cpp
+    pfaffian.cpp
+)
+
+target_compile_options(pfaffian_module PRIVATE
+    -O3
+    -march=native
+    -ffast-math
+)
+
+target_link_libraries(pfaffian_module PRIVATE ${BLAS_LIBRARIES})
