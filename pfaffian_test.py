@@ -1,32 +1,29 @@
-import os
-import ctypes
+import math
 import jax
+import numpy as np
 import jax.numpy as jnp
-from jax.ffi import register_ffi_target, ffi_call, pycapsule
+import lrux
+from datetime import datetime
+from pfcuda import pfaffian_f64, slog_pfaffian_f64
 
-jax.config.update("jax_enable_x64", True)
-jax.config.update("jax_platforms", "cuda")
+from time import sleep
 
-LIB_PATH = os.path.join(os.getcwd(), "build", "libcupfaffian.so")
+# from pfaffian import pfaffian, slog_pfaffian
 
-register_ffi_target("pfaffian_f64", LIB_PATH, platform="cuda")
-
-lib = ctypes.cdll.LoadLibrary(LIB_PATH)
-
-# 3. Register the target using the CAPSULE, not the path
-register_ffi_target("pfaffian_f64", pycapsule(lib.pfaffian_f64), platform="CUDA")
-
-def cu_pfaffian_f64(matrix):
+def generate_skew_symmetric(n, key, scale=1.0):
+    # Generate random n x n matrix
+    mat = jax.random.normal(key, (n, n))
     
-    # ffi_call returns a function. We call it immediately with (matrix)
-    func = ffi_call(
-        "pfaffian_f64",
-        jax.ShapeDtypeStruct((), jnp.float64),
-        input_layouts=[(1, 0)],
-        vmap_method="broadcast_all"
-    )
-
-    return func(matrix)
+    # Make it skew-symmetric: A - A^T ensures A^T = -A
+    skew_mat = mat - mat.T
+    
+    # Optional: zero diagonal (explicit)
+    skew_mat = skew_mat - jnp.diag(jnp.diag(skew_mat))
+    
+    # Scale the values
+    skew_mat = skew_mat * scale
+    
+    return skew_mat
 
 matrix = jnp.array([
     [ 0,  1,  2,  3,  4,  5,  6,  7,  8,  9],
@@ -41,17 +38,26 @@ matrix = jnp.array([
     [-9,-18,-29,-39,-49,-59,-69,-79,-89,  0]
 ], dtype=jnp.float64)
 
-# 4. Run the Test
-try:
-    print("--- Launching CUDA Pfaffian ---")
-    result = cu_pfaffian_f64(matrix)
-    
-    # Trigger execution (JAX is lazy)
-    print(f"Matrix Shape: {matrix.shape}")
-    print(f"Pfaffian Result: {result.item()}")
-    
-    # Verification: For this specific matrix, the result should be 0 
-    # (The Pfaffian of an NxN skew-symmetric matrix where N=10 and 
-    # elements follow a simple linear pattern is often 0 due to linear dependence)
-except Exception as e:
-    print(f"Error during FFI call: {e}")
+now = datetime.now()
+seed = int(now.timestamp() * 1_000_000)
+seed = seed & 0xFFFFFFFF
+key = jax.random.PRNGKey(seed)
+
+for i in range(1):
+    try:
+        print("--- Launching CUDA Pfaffian ---")
+
+        # Trigger execution (JAX is lazy)
+
+        matrix = generate_skew_symmetric(200, key, scale = 0.5)
+        print(f"Matrix Shape: {matrix.shape}")
+
+        mag, sign = slog_pfaffian_f64(matrix.copy())
+        print(sign, mag)
+
+        sign, mag = lrux.slogpf(matrix.copy())
+        print(sign, mag)
+
+    except Exception as e:
+        print(f"Error during FFI call: {e}")
+    print('----------')

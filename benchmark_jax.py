@@ -1,126 +1,77 @@
-import jax
-jax.config.update("jax_enable_x64", True)
-
-import jax.numpy as jnp
-from jax import lax
-import numpy as np
-import time
-import json
 import os
+import time
+import jax
+import jax.numpy as jnp
 import matplotlib.pyplot as plt
-from datetime import datetime
-# from pfaffian_jax_op_no_mask import pfaffian 
-# from pfaffian_jax import pfaffian 
-# from pfaffian_jax_op_mask import pfaffian 
-# from pfaffian_jax_s import pfaffian 
-# from pfaffian_det_based import pfaffian
-# from lrux.pfaffian import pf as pfaffian
-# from pfaffian_jax_super import pfaffian
-# from lrux import slogpf as pfaffian
-# from pfaffian_jax_naive import pfaffian
-from pfaffian import pfaffian
+import numpy as np
 
-# ----------------------------
-# BENCHMARK CONFIG
-# ----------------------------
-RESULTS_FILE = "pfaffian_benchmark.json"
+# Import your modules here
+# from your_module import slog_pfaffian as my_pf
+import lrux
+from pfaffian import slog_pfaffian as my_pf
 
-MATRIX_SIZES = [10, 20, 30]
-RUNS_PER_SIZE = 5000
+def benchmark_fn(fn, matrix, n_runs=10):    
+    start = time.perf_counter()
+    for _ in range(n_runs):
+        res = fn(matrix.copy())
+        res[0].block_until_ready()
+        res[1].block_until_ready()
 
-PLOT_DIR = "benchmarks"
-os.makedirs(PLOT_DIR, exist_ok=True)
+    end = time.perf_counter()
+    
+    return (end - start) / n_runs
 
-# ----------------------------
-# UTILITIES
-# ----------------------------
-def random_skew_symmetric(n):
-    A = np.random.randn(n, n)
-    return A - A.T
+def run_benchmarks(sizes):
+    key = jax.random.PRNGKey(0)
+    my_times = []
+    lrux_times = []
 
-def time_jax_function(func, A, runs):
-    # Convert numpy array to jax array
-    A_jax = jnp.array(A, dtype=jnp.float64)
-    # Warm-up to trigger JIT compilation
-    value = func(A_jax)
-    value.block_until_ready()
+    print(f"{'N':>6} | {'My CUDA (s)':>12} | {'lrux (s)':>12}")
+    print("-" * 35)
 
-    times = []
-    for _ in range(runs):
-        start = time.perf_counter()
-        value = func(A_jax)
-        # Make sure computation finishes (important for JAX)
-        value.block_until_ready()
-        end = time.perf_counter()
-        times.append(end - start)
-    return np.mean(times), np.std(times)
+    for n in sizes:
+        key, subkey = jax.random.split(key)
+        # Matrix must be skew-symmetric
+        mat = jax.random.normal(subkey, (n, n))
+        matrix = mat - mat.T 
+        
+        try:
+            t_lrux = benchmark_fn(lrux.slogpf, matrix)
+            t_my = benchmark_fn(my_pf, matrix)
+            
+            lrux_times.append(t_lrux)
+            my_times.append(t_my)
+            print(f"{n:6d} | {t_my:12.6f} | {t_lrux:12.6f}")
+        except Exception as e:
+            print(f"{n:6d} | Error at this size: {e}")
+            break
 
-def load_results():
-    if os.path.exists(RESULTS_FILE):
-        with open(RESULTS_FILE, "r") as f:
-            return json.load(f)
-    return []
+    return my_times, lrux_times
 
-def save_results(results):
-    with open(RESULTS_FILE, "w") as f:
-        json.dump(results, f, indent=2)
+def plot_results(sizes, my_times, lrux_times):
+    os.makedirs("benchmarks", exist_ok=True)
+    
+    plt.figure(figsize=(10, 6))
+    plt.plot(sizes, my_times, 'o-', label='My CUDA (FFI)')
+    plt.plot(sizes, lrux_times, 's-', label='lrux')
+    
+    plt.title("Pfaffian Benchmark: Custom FFI vs lrux")
+    plt.xlabel("Matrix Size (N x N)")
+    plt.ylabel("Execution Time (seconds)")
+    plt.yscale('log') # Log scale is often better for complexity scaling
+    plt.grid(True, which="both", ls="-", alpha=0.5)
+    plt.legend()
+    
+    save_path = "benchmarks/pfaffian_benchmark.png"
+    plt.savefig(save_path)
+    print(f"\nGraph saved to {save_path}")
 
-# ----------------------------
-# RUN BENCHMARK
-# ----------------------------
-previous_results = load_results()
-
-current_run = {
-    "timestamp": datetime.now().isoformat(),
-    "sizes": [],
-    "mean_times": [],
-    "std_times": []
-}
-
-print("Running JAX Pfaffian benchmark...")
-for n in MATRIX_SIZES:
-    print(f"  n = {n}")
-    A = random_skew_symmetric(n)
-    mean_t, std_t = time_jax_function(pfaffian, A, RUNS_PER_SIZE)
-
-    current_run["sizes"].append(n)
-    current_run["mean_times"].append(mean_t)
-    current_run["std_times"].append(std_t)
-
-previous_results.append(current_run)
-save_results(previous_results)
-
-# ----------------------------
-# PLOTTING
-# ----------------------------
-plt.figure(figsize=(10, 6))
-
-for run in previous_results[:-1]:
-    plt.plot(
-        run["sizes"],
-        run["mean_times"],
-        linewidth=1,
-        alpha=0.4,
-        linestyle="--",
-        label=None
-    )
-
-run = previous_results[-1]
-plt.plot(
-    run["sizes"],
-    run["mean_times"],
-    marker="o",
-    linewidth=3,
-    label=f"Current run ({run['timestamp'].split('T')[0]})"
-)
-
-plt.xlabel("Matrix size (n)")
-plt.ylabel("Execution time (seconds)")
-plt.title("JAX Pfaffian Runtime Benchmark")
-plt.grid(True)
-plt.legend(title="Run date")
-plt.tight_layout()
-
-plot_path = os.path.join(PLOT_DIR, "pfaffian_benchmark.png")
-plt.savefig(plot_path, dpi=300)
-print(f"Plot saved to {plot_path}")
+if __name__ == "__main__":
+    # Define range of matrix sizes (must be even for Pfaffian)
+    matrix_sizes = range(100, 2001, 100)
+    
+    try:
+        m_t, l_t = run_benchmarks(matrix_sizes)
+        plot_results(matrix_sizes, m_t, l_t)
+    except NameError as e:
+        print(f"Error: {e}. Please ensure 'my_slog_pfaffian' and 'lrux' are imported.")

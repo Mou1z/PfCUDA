@@ -77,8 +77,6 @@ def pfaffian(A):
         
         result *= Ak[0]
 
-    print(A)
-
     return result
 
 import numpy as np

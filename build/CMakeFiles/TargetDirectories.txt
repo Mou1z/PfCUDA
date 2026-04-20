@@ -1,3 +1,4 @@
-/mnt/c/Users/Mouiz/Desktop/PfCUDA/build/CMakeFiles/cu_pfaffian_lib.dir
+/mnt/c/Users/Mouiz/Desktop/PfCUDA/build/CMakeFiles/pfcuda_core.dir
+/mnt/c/Users/Mouiz/Desktop/PfCUDA/build/CMakeFiles/pfcuda.dir
 /mnt/c/Users/Mouiz/Desktop/PfCUDA/build/CMakeFiles/edit_cache.dir
 /mnt/c/Users/Mouiz/Desktop/PfCUDA/build/CMakeFiles/rebuild_cache.dir

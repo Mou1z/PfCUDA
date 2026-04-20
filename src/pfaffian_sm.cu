@@ -2,7 +2,7 @@
 
 template<typename T>
 __global__ void pf_sm_calc(const T * d_A, const unsigned int n, T * d_result) {
-    __shared__ T A[1024];
+    __shared__ T A[32 * 33];
     
     __shared__ unsigned int P[32];
     __shared__ T scale;

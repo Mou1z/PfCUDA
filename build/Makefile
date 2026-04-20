@@ -117,48 +117,61 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named cu_pfaffian_lib
+# Target rules for targets named pfcuda_core
 
 # Build rule for target.
-cu_pfaffian_lib: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 cu_pfaffian_lib
-.PHONY : cu_pfaffian_lib
+pfcuda_core: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 pfcuda_core
+.PHONY : pfcuda_core
 
 # fast build rule for target.
-cu_pfaffian_lib/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/cu_pfaffian_lib.dir/build.make CMakeFiles/cu_pfaffian_lib.dir/build
-.PHONY : cu_pfaffian_lib/fast
+pfcuda_core/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pfcuda_core.dir/build.make CMakeFiles/pfcuda_core.dir/build
+.PHONY : pfcuda_core/fast
 
-src/jax_bindings.o: src/jax_bindings.cu.o
-.PHONY : src/jax_bindings.o
+#=============================================================================
+# Target rules for targets named pfcuda
+
+# Build rule for target.
+pfcuda: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 pfcuda
+.PHONY : pfcuda
+
+# fast build rule for target.
+pfcuda/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pfcuda.dir/build.make CMakeFiles/pfcuda.dir/build
+.PHONY : pfcuda/fast
+
+bindings/pybind11_bindings.o: bindings/pybind11_bindings.cpp.o
+.PHONY : bindings/pybind11_bindings.o
 
 # target to build an object file
-src/jax_bindings.cu.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/cu_pfaffian_lib.dir/build.make CMakeFiles/cu_pfaffian_lib.dir/src/jax_bindings.cu.o
-.PHONY : src/jax_bindings.cu.o
+bindings/pybind11_bindings.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pfcuda.dir/build.make CMakeFiles/pfcuda.dir/bindings/pybind11_bindings.cpp.o
+.PHONY : bindings/pybind11_bindings.cpp.o
 
-src/jax_bindings.i: src/jax_bindings.cu.i
-.PHONY : src/jax_bindings.i
+bindings/pybind11_bindings.i: bindings/pybind11_bindings.cpp.i
+.PHONY : bindings/pybind11_bindings.i
 
 # target to preprocess a source file
-src/jax_bindings.cu.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/cu_pfaffian_lib.dir/build.make CMakeFiles/cu_pfaffian_lib.dir/src/jax_bindings.cu.i
-.PHONY : src/jax_bindings.cu.i
+bindings/pybind11_bindings.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pfcuda.dir/build.make CMakeFiles/pfcuda.dir/bindings/pybind11_bindings.cpp.i
+.PHONY : bindings/pybind11_bindings.cpp.i
 
-src/jax_bindings.s: src/jax_bindings.cu.s
-.PHONY : src/jax_bindings.s
+bindings/pybind11_bindings.s: bindings/pybind11_bindings.cpp.s
+.PHONY : bindings/pybind11_bindings.s
 
 # target to generate assembly for a file
-src/jax_bindings.cu.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/cu_pfaffian_lib.dir/build.make CMakeFiles/cu_pfaffian_lib.dir/src/jax_bindings.cu.s
-.PHONY : src/jax_bindings.cu.s
+bindings/pybind11_bindings.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pfcuda.dir/build.make CMakeFiles/pfcuda.dir/bindings/pybind11_bindings.cpp.s
+.PHONY : bindings/pybind11_bindings.cpp.s
 
 src/pfaffian.o: src/pfaffian.cu.o
 .PHONY : src/pfaffian.o
 
 # target to build an object file
 src/pfaffian.cu.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/cu_pfaffian_lib.dir/build.make CMakeFiles/cu_pfaffian_lib.dir/src/pfaffian.cu.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pfcuda_core.dir/build.make CMakeFiles/pfcuda_core.dir/src/pfaffian.cu.o
 .PHONY : src/pfaffian.cu.o
 
 src/pfaffian.i: src/pfaffian.cu.i
@@ -166,7 +179,7 @@ src/pfaffian.i: src/pfaffian.cu.i
 
 # target to preprocess a source file
 src/pfaffian.cu.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/cu_pfaffian_lib.dir/build.make CMakeFiles/cu_pfaffian_lib.dir/src/pfaffian.cu.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pfcuda_core.dir/build.make CMakeFiles/pfcuda_core.dir/src/pfaffian.cu.i
 .PHONY : src/pfaffian.cu.i
 
 src/pfaffian.s: src/pfaffian.cu.s
@@ -174,7 +187,7 @@ src/pfaffian.s: src/pfaffian.cu.s
 
 # target to generate assembly for a file
 src/pfaffian.cu.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/cu_pfaffian_lib.dir/build.make CMakeFiles/cu_pfaffian_lib.dir/src/pfaffian.cu.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pfcuda_core.dir/build.make CMakeFiles/pfcuda_core.dir/src/pfaffian.cu.s
 .PHONY : src/pfaffian.cu.s
 
 src/pfaffian_sm.o: src/pfaffian_sm.cu.o
@@ -182,7 +195,7 @@ src/pfaffian_sm.o: src/pfaffian_sm.cu.o
 
 # target to build an object file
 src/pfaffian_sm.cu.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/cu_pfaffian_lib.dir/build.make CMakeFiles/cu_pfaffian_lib.dir/src/pfaffian_sm.cu.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pfcuda_core.dir/build.make CMakeFiles/pfcuda_core.dir/src/pfaffian_sm.cu.o
 .PHONY : src/pfaffian_sm.cu.o
 
 src/pfaffian_sm.i: src/pfaffian_sm.cu.i
@@ -190,7 +203,7 @@ src/pfaffian_sm.i: src/pfaffian_sm.cu.i
 
 # target to preprocess a source file
 src/pfaffian_sm.cu.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/cu_pfaffian_lib.dir/build.make CMakeFiles/cu_pfaffian_lib.dir/src/pfaffian_sm.cu.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pfcuda_core.dir/build.make CMakeFiles/pfcuda_core.dir/src/pfaffian_sm.cu.i
 .PHONY : src/pfaffian_sm.cu.i
 
 src/pfaffian_sm.s: src/pfaffian_sm.cu.s
@@ -198,8 +211,56 @@ src/pfaffian_sm.s: src/pfaffian_sm.cu.s
 
 # target to generate assembly for a file
 src/pfaffian_sm.cu.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/cu_pfaffian_lib.dir/build.make CMakeFiles/cu_pfaffian_lib.dir/src/pfaffian_sm.cu.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pfcuda_core.dir/build.make CMakeFiles/pfcuda_core.dir/src/pfaffian_sm.cu.s
 .PHONY : src/pfaffian_sm.cu.s
+
+src/slog_pfaffian.o: src/slog_pfaffian.cu.o
+.PHONY : src/slog_pfaffian.o
+
+# target to build an object file
+src/slog_pfaffian.cu.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pfcuda_core.dir/build.make CMakeFiles/pfcuda_core.dir/src/slog_pfaffian.cu.o
+.PHONY : src/slog_pfaffian.cu.o
+
+src/slog_pfaffian.i: src/slog_pfaffian.cu.i
+.PHONY : src/slog_pfaffian.i
+
+# target to preprocess a source file
+src/slog_pfaffian.cu.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pfcuda_core.dir/build.make CMakeFiles/pfcuda_core.dir/src/slog_pfaffian.cu.i
+.PHONY : src/slog_pfaffian.cu.i
+
+src/slog_pfaffian.s: src/slog_pfaffian.cu.s
+.PHONY : src/slog_pfaffian.s
+
+# target to generate assembly for a file
+src/slog_pfaffian.cu.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pfcuda_core.dir/build.make CMakeFiles/pfcuda_core.dir/src/slog_pfaffian.cu.s
+.PHONY : src/slog_pfaffian.cu.s
+
+src/slog_pfaffian_lg.o: src/slog_pfaffian_lg.cu.o
+.PHONY : src/slog_pfaffian_lg.o
+
+# target to build an object file
+src/slog_pfaffian_lg.cu.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pfcuda_core.dir/build.make CMakeFiles/pfcuda_core.dir/src/slog_pfaffian_lg.cu.o
+.PHONY : src/slog_pfaffian_lg.cu.o
+
+src/slog_pfaffian_lg.i: src/slog_pfaffian_lg.cu.i
+.PHONY : src/slog_pfaffian_lg.i
+
+# target to preprocess a source file
+src/slog_pfaffian_lg.cu.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pfcuda_core.dir/build.make CMakeFiles/pfcuda_core.dir/src/slog_pfaffian_lg.cu.i
+.PHONY : src/slog_pfaffian_lg.cu.i
+
+src/slog_pfaffian_lg.s: src/slog_pfaffian_lg.cu.s
+.PHONY : src/slog_pfaffian_lg.s
+
+# target to generate assembly for a file
+src/slog_pfaffian_lg.cu.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/pfcuda_core.dir/build.make CMakeFiles/pfcuda_core.dir/src/slog_pfaffian_lg.cu.s
+.PHONY : src/slog_pfaffian_lg.cu.s
 
 # Help Target
 help:
@@ -209,16 +270,23 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
-	@echo "... cu_pfaffian_lib"
-	@echo "... src/jax_bindings.o"
-	@echo "... src/jax_bindings.i"
-	@echo "... src/jax_bindings.s"
+	@echo "... pfcuda"
+	@echo "... pfcuda_core"
+	@echo "... bindings/pybind11_bindings.o"
+	@echo "... bindings/pybind11_bindings.i"
+	@echo "... bindings/pybind11_bindings.s"
 	@echo "... src/pfaffian.o"
 	@echo "... src/pfaffian.i"
 	@echo "... src/pfaffian.s"
 	@echo "... src/pfaffian_sm.o"
 	@echo "... src/pfaffian_sm.i"
 	@echo "... src/pfaffian_sm.s"
+	@echo "... src/slog_pfaffian.o"
+	@echo "... src/slog_pfaffian.i"
+	@echo "... src/slog_pfaffian.s"
+	@echo "... src/slog_pfaffian_lg.o"
+	@echo "... src/slog_pfaffian_lg.i"
+	@echo "... src/slog_pfaffian_lg.s"
 .PHONY : help
 
 

@@ -1,1 +1,0 @@
--I/mnt/c/Users/Mouiz/Desktop/PfCUDA/include -I"/mnt/c/Users/Mouiz/desktop/pfcuda/venv/lib/python3.12/site-packages/jax" -I"/mnt/c/Users/Mouiz/desktop/pfcuda/venv/lib/python3.12/site-packages/jaxlib/include" -isystem "/usr/local/cuda-13.1/targets/x86_64-linux/include"
