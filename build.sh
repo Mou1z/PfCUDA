@@ -6,8 +6,15 @@ if [ -d "$BUILD_DIR" ]; then
     rm -rf "$BUILD_DIR"
 fi
 
-mkdir build
-cd build
+echo "--- Creating new $BUILD_DIR directory ---"
+mkdir "$BUILD_DIR"
+cd "$BUILD_DIR"
 
-cmake .. -DCMAKE_BUILD_TYPE=Release
+echo "--- Running CMake ---"
+cmake ..
+
+echo "--- Compiling with $(nproc) cores ---"
 make -j$(nproc)
+
+echo "--- Build Complete! ---"
+echo "Output library: $(pwd)/libcupfaffian.so"

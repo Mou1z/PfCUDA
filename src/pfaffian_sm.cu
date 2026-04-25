@@ -25,12 +25,9 @@ __global__ void pf_sm_calc(const T * d_A, const unsigned int n, T * d_result) {
 
     for(int k = 0; k < n - 1; k += 2) {
         if(r == 0) {
-            T val = CM(A, n, P[k], P[c]);
-
             double v = 
                 (k < c && c < n) ? 
-                gabs(val) : 0.0
-            ;
+                gabs(CM(A, n, P[k], P[c])) : -1.0;
             
             unsigned int i = c;
             unsigned mask = 0xffffffff;
@@ -72,7 +69,9 @@ __global__ void pf_sm_calc(const T * d_A, const unsigned int n, T * d_result) {
                 const T A_kr = CM(A, n, P[k], P[r]);
                 const T A_ck1 = CM(A, n, P[c], P[k + 1]);
 
-                update_value += (A_kr * A_ck1 - A_kc * A_rk1) * scale;
+                const T t1 = A_kr * A_ck1;
+                const T t2 = A_kc * A_rk1;
+                update_value += (t1 - t2) * scale;
             }
             __syncthreads();
 

@@ -194,6 +194,8 @@ void slog_pfaffian_lg(T * d_A, const unsigned int n, typename ProjectionType<T>:
             h_phase *= minus_one<T>();
         }
 
+        if (cols == 1) break;
+
         blocks = min_blocks(32, cols - 1);
         row_update<T><<<dim3(1, blocks), BLOCK, 0, stream>>>(d_A, n, k + 1, rows, cols - 1);
 

@@ -5,7 +5,10 @@ import os
 import json
 from datetime import datetime
 import lrux
+import jax
 
+jax.config.update('jax_enable_x64', True)
+jax.config.update('jax_platforms', "cuda")
 
 DATA_FILE = "benchmarks/pfaffian_data.json"
 
@@ -251,12 +254,12 @@ def plot_all_benchmarks(data):
 
 if __name__ == "__main__":
     # Benchmark sizes
-    matrix_sizes = range(100, 2001, 100)
+    matrix_sizes = range(100, 2501, 100)
     
     print("Benchmarking lrux slogpf")
     print("="*110)
     
-    results = run_benchmarks(matrix_sizes, n_runs=5)
+    results = run_benchmarks(matrix_sizes, n_runs=10)
     
     plot_benchmark_results(results)
     print_summary(results)

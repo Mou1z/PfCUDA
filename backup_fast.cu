@@ -16,27 +16,35 @@ inline int min_blocks(int tpb, int elements) {
 }
 
 template<typename T>
-__global__ void argmax(
-    const T* __restrict__ A, 
-    MaxPair<T>* __restrict__ block_results, 
-    const unsigned int n, 
-    const unsigned int k, 
-    const unsigned int elements
+__global__ void pivot(
+    T * __restrict__ A,
+    const unsigned int n,
+    const unsigned int k,
+    const unsigned int cols,
+    T * d_phase,
+    typename ProjectionType<T>::type * d_log_abs,
+    T * d_pivot_value
 ) {
     extern __shared__ unsigned char shmem[];
     MaxPair<T> * section = reinterpret_cast<MaxPair<T>*>(shmem);
+    
+    __shared__ MaxPair<T> pivot;
 
     const unsigned int tid = threadIdx.x;
-    const unsigned int i = blockIdx.x * blockDim.x + threadIdx.x;
-
-    MaxPair<T> current(-1, zero<T>());
-
-    if(i < elements) {
-        current.index = k + 1 + i;
-        current.value = CM(A, n, k, current.index);
+    
+    MaxPair<T> thread_max(-1, minus_one<T>());
+    for(unsigned int i = tid; i < cols; i += blockDim.x) {
+        int col = k + 1 + i;
+        if(col < n) {
+            T value = CM(A, n, k, col);
+            if(gabs(value) > gabs(thread_max.value)) {
+                thread_max.index = col;
+                thread_max.value = value;
+            }
+        }
     }
 
-    section[tid] = current;
+    section[tid] = thread_max;
     __syncthreads();
 
     for(unsigned int s = blockDim.x / 2; s > 0; s >>= 1) {
@@ -47,9 +55,40 @@ __global__ void argmax(
         }
         __syncthreads();
     }
+    
+    if(tid == 0)
+        pivot = section[0];
+    __syncthreads();
+
+    if(gabs(pivot.value) == zero<typename ProjectionType<T>::type>()) {
+        if(tid == 0) {
+            *d_log_abs = -INFINITY;
+            *d_phase = zero<T>();   
+        }
+        return;
+    }
+
+    int pivot_col = pivot.index;
+    if(pivot_col != k + 1) {
+        for(unsigned int i = tid; i < n; i += blockDim.x) {
+            T tmp_row = CM(A, n, k, i);
+            CM(A, n, k, i) = CM(A, n, pivot_col, i);
+            CM(A, n, pivot_col, i) = tmp_row;
+
+            T tmp_col = CM(A, n, i, k);
+            CM(A, n, i, k) = CM(A, n, i, pivot_col);
+            CM(A, n, i, pivot_col) = tmp_col;
+        }
+
+        if(tid == 0) {
+            *d_phase *= minus_one<T>();
+        }
+    }
 
     if(tid == 0) {
-        block_results[blockIdx.x] = section[0];
+        *d_log_abs += log(gabs(pivot.value));
+        *d_phase *= pivot.value / gabs(pivot.value);
+        *d_pivot_value = pivot.value;
     }
 }
 
@@ -138,29 +177,35 @@ __global__ void apply_updates(
     T * __restrict__ A,
     const unsigned int n, 
     const unsigned int k,
-    const T scale_factor
+    const T * __restrict__ d_pivot_value
 ) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     int j = k + 2 + i;
     if(j >= n) return;
 
-    CM(A, n, k, j) *= scale_factor;
+    CM(A, n, k, j) *= (one<T>() / *d_pivot_value);
     CM(A, n, k + 1, j) *= minus_one<T>();
+}
+
+inline unsigned int min_threads(int elements) {
+    int threads = 1;
+    while(threads < elements)
+        threads <<= 1;
+    return min(threads, 1024);
 }
 
 template<typename T>
 void slog_pfaffian_lg(T * d_A, const unsigned int n, typename ProjectionType<T>::type * d_log_abs, T * d_phase, cudaStream_t stream) {
     const dim3 BLOCK(32, 32);
 
-    typename ProjectionType<T>::type h_log_abs = 0.0;
-    T h_phase = one<T>();
+    T h_one = one<T>();
+    typename ProjectionType<T>::type h_log_zero = zero<typename ProjectionType<T>::type>();
 
-    MaxPair<T> h_pivot;
-    MaxPair<T> * d_block_results;
+    cudaMemcpy(d_phase, &h_one, sizeof(T), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_log_abs, &h_log_zero, sizeof(typename ProjectionType<T>::type), cudaMemcpyHostToDevice);
 
-    const unsigned int pair_size = sizeof(MaxPair<T>);
-    const unsigned int shared_bytes = pair_size * ARGMAX_BLOCK_SIZE;
-    cudaMallocAsync(&d_block_results, pair_size * min_blocks(ARGMAX_BLOCK_SIZE, n - 1), stream);
+    T * d_pivot_value;
+    cudaMalloc(&d_pivot_value, sizeof(T));
 
     int blocks, rows, cols;
     for(int k = 0; k < n - 1; k += 2) {
@@ -170,44 +215,20 @@ void slog_pfaffian_lg(T * d_A, const unsigned int n, typename ProjectionType<T>:
         blocks = min_blocks(32, cols);
         row_update<T><<<dim3(1, blocks), BLOCK, 0, stream>>>(d_A, n, k, rows, cols);
 
-        blocks = min_blocks(256, cols);
-        argmax<T><<<blocks, 256, shared_bytes, stream>>>(d_A, d_block_results, n, k, cols);
-        if(blocks > 1)
-            argmax<T><<<1, 256, shared_bytes, stream>>>(d_A, d_block_results, n, k, blocks);
-        
-        cudaMemcpyAsync(&h_pivot, d_block_results, pair_size, cudaMemcpyDeviceToHost, stream);
+        unsigned int threads = min_threads(cols);
+        size_t shared_bytes = threads * sizeof(MaxPair<T>);
+        pivot<T><<<1, threads, shared_bytes, stream>>>(d_A, n, k, cols, d_phase, d_log_abs, d_pivot_value);
 
-        if(gabs(h_pivot.value) == zero<typename ProjectionType<T>::type>()) {
-            h_log_abs = -INFINITY;
-            h_phase = zero<T>();
-            break;
-        }
-
-        h_log_abs += log(gabs(h_pivot.value));
-        h_phase *= (h_pivot.value / gabs(h_pivot.value));
-        if(h_pivot.index != k + 1) {
-            blocks = min_blocks(256, n);
-
-            swap_rows<<<blocks, 256, 0, stream>>>(d_A, n, k + 1, h_pivot.index);
-            swap_cols<<<blocks, 256, 0, stream>>>(d_A, n, k + 1, h_pivot.index);
-
-            h_phase *= minus_one<T>();
-        }
-
-        if (cols == 1) break;
+        if(cols == 1) break;
 
         blocks = min_blocks(32, cols - 1);
         row_update<T><<<dim3(1, blocks), BLOCK, 0, stream>>>(d_A, n, k + 1, rows, cols - 1);
 
         blocks = min_blocks(256, cols - 1);
-        const T scale_factor = one<T>() / h_pivot.value;
-        apply_updates<<<blocks, 256, 0, stream>>>(d_A, n, k, scale_factor);
+        apply_updates<<<blocks, 256, 0, stream>>>(d_A, n, k, d_pivot_value);
     }
-
-    cudaMemcpyAsync(d_log_abs, &h_log_abs, sizeof(typename ProjectionType<T>::type), cudaMemcpyHostToDevice, stream);
-    cudaMemcpyAsync(d_phase, &h_phase, sizeof(T), cudaMemcpyHostToDevice, stream);
-
-    cudaFreeAsync(d_block_results, stream);
+    
+    cudaFree(d_pivot_value);
 }
 
 template void slog_pfaffian_lg<float>(float*, const unsigned int, float*, float*, cudaStream_t);
