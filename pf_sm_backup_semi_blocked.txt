@@ -1,0 +1,111 @@
+template<typename T>
+__global__ void pf_sm_calc(const T * d_A, const unsigned int n, T * d_result) {
+    extern __shared__ unsigned char shmem[];
+    T * A = reinterpret_cast<T*>(shmem);
+
+    __shared__ unsigned int P[32];
+
+    __shared__ T scale;
+    __shared__ T result;
+
+    const int c = threadIdx.x;
+
+    for(int r = 0; r < n; r++) {
+        if(c < n) {
+            RM(A, n, r, c) = 
+                RM(d_A, n, r, c);
+        }
+    }
+
+    P[c] = c;
+
+    if(c == 0)
+        result = one<T>();
+    __syncwarp();
+
+    for(int k = 0; k < n - 1; k += 2) {
+        const int rows = (k & ~1);
+        T * __restrict__ v_r = &RM(A, n, P[k], 0);
+        T * __restrict__ w_r = &RM(A, n, P[k + 1], 0);
+
+        if(k < c && c < n) {
+            T v_c_update = zero<T>();
+
+            for(int r = 0; r < rows; r += 2) {
+                const T k0 = RM(A, n, P[r], P[k]);
+                const T k1 = -RM(A, n, P[r + 1], P[k]);
+
+                const T * __restrict__ curr_r0 = &RM(A, n, P[r], 0);
+                const T * __restrict__ curr_r1 = &RM(A, n, P[r + 1], 0);   
+
+                const T c_r0 = curr_r0[P[c]];
+                const T c_r1 = -curr_r1[P[c]];
+
+                v_c_update += (c_r1 * k0 - c_r0 * k1);
+            }
+
+            v_r[c] += v_c_update;
+        }
+        __syncwarp();
+
+        double v = 
+            (k < c && c < n) ? 
+            gabs(RM(A, n, P[k], P[c])) : -1.0;
+        
+        unsigned int i = c;
+        unsigned mask = 0xffffffff;
+
+        #pragma unroll
+        for(unsigned int s = 16; s > 0; s >>= 1) {
+            const int    _i = __shfl_down_sync(mask, i, s);
+            const double _v = __shfl_down_sync(mask, v, s);
+
+            if(_v > v) {
+                i = _i;
+                v = _v;
+            }
+        }
+
+
+        if(c == 0) {
+            if(i != k + 1) {
+                const int tmp = P[k + 1];
+                P[k + 1] = P[i];
+                P[i] = tmp;
+
+                result *= minus_one<T>();
+            }
+
+            const T pivot = CM(A, n, P[k], P[k + 1]);
+            scale = one<T>() / pivot;
+            result *= pivot;
+        }
+        __syncwarp();
+
+        if(k + 1 < c && c < n) {
+            T w_c_update = zero<T>();
+            for(int r = 0; r < rows; r += 2) {
+                const T k0 = RM(A, n, P[r], P[k + 1]);
+                const T k1 = -RM(A, n, P[r + 1], P[k + 1]);
+
+                const T * __restrict__ curr_r0 = &RM(A, n, P[r], 0);
+                const T * __restrict__ curr_r1 = &RM(A, n, P[r + 1], 0);
+
+                const T c_r0 = curr_r0[P[c]];
+                const T c_r1 = -curr_r1[P[c]];
+            
+                w_c_update += (c_r1 * k0 - c_r0 * k1);
+            }
+            w_r[c] += w_c_update;
+        }
+        __syncwarp();
+
+        if(k + 1 < c && c < n) {
+            v_r[c] *= scale;
+        }
+        __syncwarp();
+    }
+
+    if(c == 0) 
+        *d_result = result;
+}

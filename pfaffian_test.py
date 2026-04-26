@@ -4,7 +4,8 @@ import numpy as np
 import jax.numpy as jnp
 import lrux
 from datetime import datetime
-from pfcuda import pfaffian_f64, slog_pfaffian_f64
+from pfaffian import pfaffian
+# from pfcuda import pfaffian_f64 as pfaffian
 
 from time import sleep
 
@@ -38,26 +39,4 @@ matrix = jnp.array([
     [-9,-18,-29,-39,-49,-59,-69,-79,-89,  0]
 ], dtype=jnp.float64)
 
-now = datetime.now()
-seed = int(now.timestamp() * 1_000_000)
-seed = seed & 0xFFFFFFFF
-key = jax.random.PRNGKey(seed)
-
-for i in range(1):
-    try:
-        print("--- Launching CUDA Pfaffian ---")
-
-        # Trigger execution (JAX is lazy)
-
-        matrix = generate_skew_symmetric(200, key, scale = 0.5)
-        print(f"Matrix Shape: {matrix.shape}")
-
-        mag, sign = slog_pfaffian_f64(matrix.copy())
-        print(sign, mag)
-
-        sign, mag = lrux.slogpf(matrix.copy())
-        print(sign, mag)
-
-    except Exception as e:
-        print(f"Error during FFI call: {e}")
-    print('----------')
+print(pfaffian(matrix))

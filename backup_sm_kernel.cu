@@ -1,7 +1,3 @@
-#include "pfaffian_sm.cuh"
-
-#define RM(A, ld, i, j) ((A)[(i) * (ld) + (j)])
-
 template<typename T>
 __global__ void pf_sm_calc(const T * d_A, const unsigned int n, T * d_result) {
     __shared__ T A[32 * 33];
@@ -13,9 +9,9 @@ __global__ void pf_sm_calc(const T * d_A, const unsigned int n, T * d_result) {
     const int c = threadIdx.x;
 
     if(c < n) {
-        for(int r = 0; r < n; r++)
-            CM(A, n, r, c) = 
-                CM(d_A, n, r, c);
+        for(int r = 0; r < n; r++) {
+            CM(A, n, r, c) = CM(d_A, n, r, c);
+        }
 
         P[c] = c;
 
@@ -83,15 +79,3 @@ __global__ void pf_sm_calc(const T * d_A, const unsigned int n, T * d_result) {
     if(c == 0)
         *d_result = result;
 }
-
-template<typename T>
-void pfaffian_sm(const T * d_A, const unsigned int n, T * d_result, cudaStream_t stream) {
-    size_t shared_bytes = n * n * sizeof(T);
-    pf_sm_calc<T><<<1, 32, shared_bytes, stream>>>(d_A, n, d_result);
-    // pf_sm_calc<T><<<1, dim3(32, 32), 0, stream>>>(d_A, n, d_result);
-}
-
-template void pfaffian_sm<float>(const float*, const unsigned int, float*, cudaStream_t);
-template void pfaffian_sm<double>(const double*, const unsigned int, double*, cudaStream_t);
-template void pfaffian_sm<cuFloatComplex>(const cuFloatComplex*, const unsigned int, cuFloatComplex*, cudaStream_t);
-template void pfaffian_sm<cuDoubleComplex>(const cuDoubleComplex*, const unsigned int, cuDoubleComplex*, cudaStream_t);

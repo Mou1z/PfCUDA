@@ -1,0 +1,61 @@
+Date : 2026-04-26 17:47:59
+Directory : c:\Users\Mouiz\Desktop\PfCUDA
+Total : 27 files,  2423 codes, 144 comments, 671 blanks, all 3238 lines
+
+Languages
++--------------+------------+------------+------------+------------+------------+
+| language     | files      | code       | comment    | blank      | total      |
++--------------+------------+------------+------------+------------+------------+
+| CUDA C++     |         14 |      1,181 |         11 |        333 |      1,525 |
+| Python       |          6 |        701 |        133 |        268 |      1,102 |
+| JSON         |          1 |        284 |          0 |          0 |        284 |
+| C++          |          3 |        192 |          0 |         52 |        244 |
+| CMake        |          1 |         40 |          0 |          9 |         49 |
+| Shell Script |          2 |         25 |          0 |          9 |         34 |
++--------------+------------+------------+------------+------------+------------+
+
+Directories
++-------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                        | files      | code       | comment    | blank      | total      |
++-------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                           |         27 |      2,423 |        144 |        671 |      3,238 |
+| . (Files)                                                   |         15 |      1,467 |        133 |        479 |      2,079 |
+| benchmarks                                                  |          1 |        284 |          0 |          0 |        284 |
+| bindings                                                    |          2 |        249 |          2 |         63 |        314 |
+| include                                                     |          5 |        100 |          4 |         31 |        135 |
+| src                                                         |          4 |        323 |          5 |         98 |        426 |
++-------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++-------------------------------------------------------------+--------------+------------+------------+------------+------------+
+| filename                                                    | language     | code       | comment    | blank      | total      |
++-------------------------------------------------------------+--------------+------------+------------+------------+------------+
+| c:\Users\Mouiz\Desktop\PfCUDA\CMakeLists.txt                | CMake        |         40 |          0 |          9 |         49 |
+| c:\Users\Mouiz\Desktop\PfCUDA\backup.cpp                    | C++          |        168 |          0 |         48 |        216 |
+| c:\Users\Mouiz\Desktop\PfCUDA\backup_fast.cu                | CUDA C++     |        189 |          0 |         48 |        237 |
+| c:\Users\Mouiz\Desktop\PfCUDA\backup_sm_kernel.cu           | CUDA C++     |         63 |          0 |         18 |         81 |
+| c:\Users\Mouiz\Desktop\PfCUDA\benchmark_lrux.py             | Python       |        181 |         27 |         67 |        275 |
+| c:\Users\Mouiz\Desktop\PfCUDA\benchmark_pfcuda.py           | Python       |        177 |         27 |         66 |        270 |
+| c:\Users\Mouiz\Desktop\PfCUDA\benchmark_pfcuda_sm.py        | Python       |        179 |         27 |         67 |        273 |
+| c:\Users\Mouiz\Desktop\PfCUDA\benchmarks\pfaffian_data.json | JSON         |        284 |          0 |          0 |        284 |
+| c:\Users\Mouiz\Desktop\PfCUDA\bindings\jax_bindings.cu      | CUDA C++     |        150 |          2 |         30 |        182 |
+| c:\Users\Mouiz\Desktop\PfCUDA\bindings\pybind11_bindings.cu | CUDA C++     |         99 |          0 |         33 |        132 |
+| c:\Users\Mouiz\Desktop\PfCUDA\build.sh                      | Shell Script |         15 |          0 |          5 |         20 |
+| c:\Users\Mouiz\Desktop\PfCUDA\include\pfaffian.cuh          | CUDA C++     |         14 |          2 |          5 |         21 |
+| c:\Users\Mouiz\Desktop\PfCUDA\include\pfaffian_sm.cuh       | CUDA C++     |         14 |          0 |          3 |         17 |
+| c:\Users\Mouiz\Desktop\PfCUDA\include\pfaffian_utils.cuh    | CUDA C++     |         44 |          0 |         14 |         58 |
+| c:\Users\Mouiz\Desktop\PfCUDA\include\slog_pfaffian.cuh     | CUDA C++     |         20 |          2 |          6 |         28 |
+| c:\Users\Mouiz\Desktop\PfCUDA\include\slog_pfaffian_lg.cuh  | CUDA C++     |          8 |          0 |          3 |         11 |
+| c:\Users\Mouiz\Desktop\PfCUDA\j_build.sh                    | Shell Script |         10 |          0 |          4 |         14 |
+| c:\Users\Mouiz\Desktop\PfCUDA\main.cpp                      | C++          |         21 |          0 |          3 |         24 |
+| c:\Users\Mouiz\Desktop\PfCUDA\pfaffian.py                   | Python       |         68 |          0 |         19 |         87 |
+| c:\Users\Mouiz\Desktop\PfCUDA\pfaffian_jax_naive.py         | Python       |         69 |         46 |         40 |        155 |
+| c:\Users\Mouiz\Desktop\PfCUDA\pfaffian_test.py              | Python       |         27 |          6 |          9 |         42 |
+| c:\Users\Mouiz\Desktop\PfCUDA\raw_pfaffian.cu               | CUDA C++     |        257 |          0 |         75 |        332 |
+| c:\Users\Mouiz\Desktop\PfCUDA\raw_pfaffian.h                | C++          |          3 |          0 |          1 |          4 |
+| c:\Users\Mouiz\Desktop\PfCUDA\src\pfaffian.cu               | CUDA C++     |         43 |          2 |         15 |         60 |
+| c:\Users\Mouiz\Desktop\PfCUDA\src\pfaffian_sm.cu            | CUDA C++     |         74 |          1 |         22 |         97 |
+| c:\Users\Mouiz\Desktop\PfCUDA\src\slog_pfaffian.cu          | CUDA C++     |         38 |          2 |         13 |         53 |
+| c:\Users\Mouiz\Desktop\PfCUDA\src\slog_pfaffian_lg.cu       | CUDA C++     |        168 |          0 |         48 |        216 |
+| Total                                                       |              |      2,423 |        144 |        671 |      3,238 |
++-------------------------------------------------------------+--------------+------------+------------+------------+------------+

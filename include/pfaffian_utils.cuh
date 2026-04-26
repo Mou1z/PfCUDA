@@ -53,3 +53,6 @@ __device__ __host__ inline cuDoubleComplex operator / (cuDoubleComplex a, cuDoub
 
 __device__ __host__ inline cuFloatComplex operator / (cuFloatComplex a, float b) { return make_cuFloatComplex(a.x / b, a.y / b); }
 __device__ __host__ inline cuDoubleComplex operator / (cuDoubleComplex a, double b) { return make_cuDoubleComplex(a.x / b, a.y / b); }
+
+__device__ __host__ inline cuFloatComplex operator - (cuFloatComplex a) { return make_cuFloatComplex(-a.x, -a.y); }
+__device__ __host__ inline cuDoubleComplex operator - (cuDoubleComplex a) { return make_cuDoubleComplex(-a.x, -a.y); }

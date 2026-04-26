@@ -1,0 +1,29 @@
+"filename", "language", "Python", "CUDA C++", "CMake", "Shell Script", "C++", "JSON", "comment", "blank", "total"
+"c:\Users\Mouiz\Desktop\PfCUDA\CMakeLists.txt", "CMake", 0, 0, 40, 0, 0, 0, 0, 9, 49
+"c:\Users\Mouiz\Desktop\PfCUDA\backup.cpp", "C++", 0, 0, 0, 0, 168, 0, 0, 48, 216
+"c:\Users\Mouiz\Desktop\PfCUDA\backup_fast.cu", "CUDA C++", 0, 189, 0, 0, 0, 0, 0, 48, 237
+"c:\Users\Mouiz\Desktop\PfCUDA\backup_sm_kernel.cu", "CUDA C++", 0, 63, 0, 0, 0, 0, 0, 18, 81
+"c:\Users\Mouiz\Desktop\PfCUDA\benchmark_lrux.py", "Python", 181, 0, 0, 0, 0, 0, 27, 67, 275
+"c:\Users\Mouiz\Desktop\PfCUDA\benchmark_pfcuda.py", "Python", 177, 0, 0, 0, 0, 0, 27, 66, 270
+"c:\Users\Mouiz\Desktop\PfCUDA\benchmark_pfcuda_sm.py", "Python", 179, 0, 0, 0, 0, 0, 27, 67, 273
+"c:\Users\Mouiz\Desktop\PfCUDA\benchmarks\pfaffian_data.json", "JSON", 0, 0, 0, 0, 0, 284, 0, 0, 284
+"c:\Users\Mouiz\Desktop\PfCUDA\bindings\jax_bindings.cu", "CUDA C++", 0, 150, 0, 0, 0, 0, 2, 30, 182
+"c:\Users\Mouiz\Desktop\PfCUDA\bindings\pybind11_bindings.cu", "CUDA C++", 0, 99, 0, 0, 0, 0, 0, 33, 132
+"c:\Users\Mouiz\Desktop\PfCUDA\build.sh", "Shell Script", 0, 0, 0, 15, 0, 0, 0, 5, 20
+"c:\Users\Mouiz\Desktop\PfCUDA\include\pfaffian.cuh", "CUDA C++", 0, 14, 0, 0, 0, 0, 2, 5, 21
+"c:\Users\Mouiz\Desktop\PfCUDA\include\pfaffian_sm.cuh", "CUDA C++", 0, 14, 0, 0, 0, 0, 0, 3, 17
+"c:\Users\Mouiz\Desktop\PfCUDA\include\pfaffian_utils.cuh", "CUDA C++", 0, 44, 0, 0, 0, 0, 0, 14, 58
+"c:\Users\Mouiz\Desktop\PfCUDA\include\slog_pfaffian.cuh", "CUDA C++", 0, 20, 0, 0, 0, 0, 2, 6, 28
+"c:\Users\Mouiz\Desktop\PfCUDA\include\slog_pfaffian_lg.cuh", "CUDA C++", 0, 8, 0, 0, 0, 0, 0, 3, 11
+"c:\Users\Mouiz\Desktop\PfCUDA\j_build.sh", "Shell Script", 0, 0, 0, 10, 0, 0, 0, 4, 14
+"c:\Users\Mouiz\Desktop\PfCUDA\main.cpp", "C++", 0, 0, 0, 0, 21, 0, 0, 3, 24
+"c:\Users\Mouiz\Desktop\PfCUDA\pfaffian.py", "Python", 68, 0, 0, 0, 0, 0, 0, 19, 87
+"c:\Users\Mouiz\Desktop\PfCUDA\pfaffian_jax_naive.py", "Python", 69, 0, 0, 0, 0, 0, 46, 40, 155
+"c:\Users\Mouiz\Desktop\PfCUDA\pfaffian_test.py", "Python", 27, 0, 0, 0, 0, 0, 6, 9, 42
+"c:\Users\Mouiz\Desktop\PfCUDA\raw_pfaffian.cu", "CUDA C++", 0, 257, 0, 0, 0, 0, 0, 75, 332
+"c:\Users\Mouiz\Desktop\PfCUDA\raw_pfaffian.h", "C++", 0, 0, 0, 0, 3, 0, 0, 1, 4
+"c:\Users\Mouiz\Desktop\PfCUDA\src\pfaffian.cu", "CUDA C++", 0, 43, 0, 0, 0, 0, 2, 15, 60
+"c:\Users\Mouiz\Desktop\PfCUDA\src\pfaffian_sm.cu", "CUDA C++", 0, 74, 0, 0, 0, 0, 1, 22, 97
+"c:\Users\Mouiz\Desktop\PfCUDA\src\slog_pfaffian.cu", "CUDA C++", 0, 38, 0, 0, 0, 0, 2, 13, 53
+"c:\Users\Mouiz\Desktop\PfCUDA\src\slog_pfaffian_lg.cu", "CUDA C++", 0, 168, 0, 0, 0, 0, 0, 48, 216
+"Total", "-", 701, 1181, 40, 25, 192, 284, 144, 671, 3238

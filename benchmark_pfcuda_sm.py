@@ -4,14 +4,14 @@ import matplotlib.pyplot as plt
 import os
 import json
 from datetime import datetime
-import lrux
+from pfaffian import pfaffian
 import jax
+import math
 
 jax.config.update('jax_enable_x64', True)
 jax.config.update('jax_platforms', "cuda")
 
 DATA_FILE = "benchmarks/pfaffian_data.json"
-
 
 def generate_skew_symmetric(n, seed=None):
     """Generate a random skew-symmetric matrix."""
@@ -21,13 +21,11 @@ def generate_skew_symmetric(n, seed=None):
     return mat - mat.T
 
 
-def benchmark_lrux(matrix, n_runs=5, warmup=1):
-    """Benchmark the lrux slogpf function."""
+def benchmark_pfcuda(matrix, n_runs=5, warmup=1):
+    """Benchmark the pfcuda slog_pfaffian function."""
     # Warmup run
     for _ in range(warmup):
-        phase, log_abs = lrux.slogpf(matrix.copy())
-        phase.block_until_ready()
-        log_abs.block_until_ready()
+        pfaffian(matrix.copy())
     
     # Timed runs
     times = []
@@ -37,13 +35,14 @@ def benchmark_lrux(matrix, n_runs=5, warmup=1):
         mat_copy = matrix.copy()
         
         start = time.perf_counter()
-        phase, log_abs = lrux.slogpf(mat_copy)
-        phase.block_until_ready()
-        log_abs.block_until_ready()
+        result = pfaffian(mat_copy)
         end = time.perf_counter()
         
         times.append(end - start)
-        # Convert JAX arrays to numpy for consistency
+
+        phase = math.copysign(1.0, result)
+        log_abs = math.log(abs(result))
+        
         results.append((float(phase), float(log_abs)))
     
     avg_time = np.mean(times)
@@ -95,7 +94,7 @@ def run_benchmarks(sizes, n_runs=5):
             sign, logdet = np.linalg.slogdet(matrix)
             expected_log_abs = 0.5 * logdet
             
-            avg_time, std_time, runs_results, times = benchmark_lrux(matrix, n_runs=n_runs)
+            avg_time, std_time, runs_results, times = benchmark_pfcuda(matrix, n_runs=n_runs)
             
             phase, log_abs = runs_results[0]
             accuracy_error = log_abs - expected_log_abs
@@ -256,17 +255,16 @@ if __name__ == "__main__":
     # Benchmark sizes
     matrix_sizes = range(2, 32, 2)
     
-    print("Benchmarking lrux slogpf")
+    print("Benchmarking pfcuda slog_pfaffian_f64")
     print("="*110)
     
+    # Run benchmarks
     results = run_benchmarks(matrix_sizes, n_runs=10)
-    
-    plot_benchmark_results(results)
     print_summary(results)
-
+    
     # Load existing data and add new run
     all_data = load_or_create_data()
-    all_data = add_run(all_data, results, 'lrux')
+    all_data = add_run(all_data, results, 'pfcuda')
     save_data(all_data)
     
     print(f"\n✓ Data saved to {DATA_FILE}")
