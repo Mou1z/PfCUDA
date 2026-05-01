@@ -1,5 +1,6 @@
 #pragma once
 
+#include <limits>
 #include <string>
 #include <stdexcept>
 
@@ -7,6 +8,7 @@
 #include <cuComplex.h>
 
 #define CM(A, ld, i, j) ((A)[(i) + (j) * (ld)])
+#define RM(A, ld, i, j) ((A)[(i) * (ld) + (j)])
 
 template <typename T> struct ProjectionType { typedef T type; };
 template <> struct ProjectionType<cuFloatComplex> { typedef float type; };
@@ -16,6 +18,15 @@ __device__ __host__ inline float gabs(float x) { return x < 0 ? -x : x; }
 __device__ __host__ inline double gabs(double x) { return x < 0 ? -x : x; }
 __device__ __host__ inline float gabs(cuFloatComplex x) { return cuCabsf(x); }
 __device__ __host__ inline double gabs(cuDoubleComplex x) { return cuCabs(x); }
+
+template<typename T> struct Eps;
+template<> struct Eps<float> { static constexpr float value = 10 * std::numeric_limits<float>::epsilon(); };
+template<> struct Eps<double> { static constexpr double value = 10 * std::numeric_limits<double>::epsilon(); };
+template<> struct Eps<cuFloatComplex> { static constexpr float value = Eps<float>::value; };
+template<> struct Eps<cuDoubleComplex> { static constexpr float value = Eps<double>::value; };
+
+template<typename T>
+__device__ __host__ bool is_zero(T x) { return gabs(x) < Eps<T>::value; }
 
 template<typename T> __device__ __host__ inline T zero();
 template<> __device__ __host__ inline float zero<float>() { return 0.0f; }
@@ -56,3 +67,6 @@ __device__ __host__ inline cuDoubleComplex operator / (cuDoubleComplex a, double
 
 __device__ __host__ inline cuFloatComplex operator - (cuFloatComplex a) { return make_cuFloatComplex(-a.x, -a.y); }
 __device__ __host__ inline cuDoubleComplex operator - (cuDoubleComplex a) { return make_cuDoubleComplex(-a.x, -a.y); }
+
+__device__ __host__ inline bool operator == (cuFloatComplex a, cuFloatComplex b) { return (a.x == b.x) && (a.y == b.y); }
+__device__ __host__ inline bool operator == (cuDoubleComplex a, cuDoubleComplex b) { return (a.x == b.x) && (a.y == b.y); }

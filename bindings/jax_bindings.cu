@@ -43,21 +43,23 @@ ffi::Error slog_pfaffian_mapper(
     cuda_type* d_sign_ptr = reinterpret_cast<cuda_type*>(d_sign->typed_data());
 
     cuda_type* d_temp = nullptr;
-    cudaError_t err = cudaMalloc(&d_temp, step * sizeof(cuda_type));
+    
+    cudaError_t err = cudaMallocAsync(&d_temp, step * sizeof(cuda_type), stream);
     if (err != cudaSuccess) {
-        return ffi::Error::Internal("cudaMalloc failed");
+        return ffi::Error::Internal("cudaMallocAsync failed");
     }
 
     for (unsigned int i = 0, batch_id = 0; i < total_elements; i += step, ++batch_id) {
-        err = cudaMemcpy(
+        err = cudaMemcpyAsync(
             d_temp,
             d_A_ptr + i,
             step * sizeof(cuda_type),
-            cudaMemcpyDeviceToDevice
+            cudaMemcpyDeviceToDevice,
+            stream
         );
         if (err != cudaSuccess) {
-            cudaFree(d_temp);
-            return ffi::Error::Internal("cudaMemcpy failed");
+            cudaFreeAsync(d_temp, stream);
+            return ffi::Error::Internal("cudaMemcpyAsync failed");
         }
 
         slog_pfaffian<cuda_type>(
@@ -69,10 +71,9 @@ ffi::Error slog_pfaffian_mapper(
         );
     }
 
-    err = cudaStreamSynchronize(stream);
-    cudaFree(d_temp);
+    err = cudaFreeAsync(d_temp, stream);
     if (err != cudaSuccess) {
-        return ffi::Error::Internal("cudaStreamSynchronize failed");
+        return ffi::Error::Internal("cudaFreeAsync failed");
     }
 
     return ffi::Error::Success();

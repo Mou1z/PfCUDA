@@ -1,0 +1,11 @@
+# ninja log v7
+107	3087	1777667874596413700	CMakeFiles/pfaffian_lib.dir/src/pfaffian_cpu.cpp.o	ea07dca7a65b592c
+64	4033	1777667874550143700	CMakeFiles/cu_pfaffian_lib.dir/src/pfaffian.cu.o	8f518a69b2286eb8
+76	4064	1777667874555192800	CMakeFiles/cu_pfaffian_lib.dir/src/slog_pfaffian.cu.o	283a8f716a8e102e
+70	4299	1777667874555192800	CMakeFiles/cu_pfaffian_lib.dir/src/pfaffian_sm.cu.o	9f6494b9b2fdb5a3
+82	4756	1777667874570839100	CMakeFiles/cu_pfaffian_lib.dir/src/slog_pfaffian_lg.cu.o	39695e5c04e8a80e
+99	11424	1777667874586444300	CMakeFiles/pfaffian_lib.dir/bindings/pybind_bindings.cpp.o	912307b5ef238d92
+92	11523	1777667874570839100	CMakeFiles/cu_pfaffian_lib.dir/bindings/jax_bindings.cu.o	5c64c1571d5f212b
+11528	11718	1777667886515149100	CMakeFiles/cu_pfaffian_lib.dir/cmake_device_link.o	2b1b43f11c925915
+11719	12290	1777667886730178200	libcupfaffian.so	7797cf09b03460eb
+11466	13567	1777667886462101800	cpupfaffian.cpython-312-x86_64-linux-gnu.so	18b922da811ed336

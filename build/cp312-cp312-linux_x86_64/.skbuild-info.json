@@ -1,0 +1,8 @@
+{
+  "source_dir": "/mnt/c/Users/Mouiz/Desktop/PF_CUDA",
+  "build_dir": "/mnt/c/Users/Mouiz/Desktop/PF_CUDA/build/cp312-cp312-linux_x86_64",
+  "cmake_path": "/usr/bin/cmake",
+  "skbuild_path": "/tmp/pip-build-env-9azqbij2/overlay/lib/python3.12/site-packages/scikit_build_core",
+  "skbuild_version": "0.12.2",
+  "python_executable": "/mnt/c/Users/Mouiz/Desktop/fbm-classical-training/venv/bin/python3"
+}

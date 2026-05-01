@@ -17,4 +17,3 @@ echo "--- Compiling with $(nproc) cores ---"
 make -j$(nproc)
 
 echo "--- Build Complete! ---"
-echo "Output library: $(pwd)/libcupfaffian.so"

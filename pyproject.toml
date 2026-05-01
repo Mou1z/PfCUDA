@@ -1,0 +1,19 @@
+[build-system]
+requires = ["scikit-build-core", "pybind11", "jax", "jaxlib"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "pfcuda"
+version = "0.1.0"
+description = "A JAX/CUDA/C++ library for computing the Pfaffian of a matrix."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "jax>=0.4.0",
+    "jaxlib>=0.4.0",
+]
+
+[tool.scikit-build]
+cmake.version = ">=3.18"
+ninja.version = ">=1.5"
+build-dir = "build/{wheel_tag}"

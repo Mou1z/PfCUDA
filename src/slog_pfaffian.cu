@@ -36,6 +36,12 @@ void slog_pfaffian(T * d_A, const unsigned int n, typename ProjectionType<T>::ty
     if(n <= 32) 
         matrix_size_error(n);
 
+    if(n == 0 || n & 1) {
+        *d_log_abs = -INFINITY;
+        *d_phase = zero<T>();
+        return;
+    }
+
     slog_pfaffian_lg<T>(d_A, n, d_log_abs, d_phase, stream);
 }
 

@@ -174,10 +174,10 @@ void slog_pfaffian_lg(T * d_A, const unsigned int n, typename ProjectionType<T>:
         argmax<T><<<blocks, 256, shared_bytes, stream>>>(d_A, d_block_results, n, k, cols);
         if(blocks > 1)
             argmax<T><<<1, 256, shared_bytes, stream>>>(d_A, d_block_results, n, k, blocks);
-        
+
         cudaMemcpyAsync(&h_pivot, d_block_results, pair_size, cudaMemcpyDeviceToHost, stream);
 
-        if(gabs(h_pivot.value) == zero<typename ProjectionType<T>::type>()) {
+        if(is_zero<T>(h_pivot.value)) {
             h_log_abs = -INFINITY;
             h_phase = zero<T>();
             break;

@@ -1,0 +1,8 @@
+/mnt/c/Users/Mouiz/Desktop/PF_CUDA/build/cp312-cp312-linux_x86_64/CMakeFiles/cu_pfaffian_lib.dir
+/mnt/c/Users/Mouiz/Desktop/PF_CUDA/build/cp312-cp312-linux_x86_64/CMakeFiles/pfaffian_lib.dir
+/mnt/c/Users/Mouiz/Desktop/PF_CUDA/build/cp312-cp312-linux_x86_64/CMakeFiles/edit_cache.dir
+/mnt/c/Users/Mouiz/Desktop/PF_CUDA/build/cp312-cp312-linux_x86_64/CMakeFiles/rebuild_cache.dir
+/mnt/c/Users/Mouiz/Desktop/PF_CUDA/build/cp312-cp312-linux_x86_64/CMakeFiles/list_install_components.dir
+/mnt/c/Users/Mouiz/Desktop/PF_CUDA/build/cp312-cp312-linux_x86_64/CMakeFiles/install.dir
+/mnt/c/Users/Mouiz/Desktop/PF_CUDA/build/cp312-cp312-linux_x86_64/CMakeFiles/install/local.dir
+/mnt/c/Users/Mouiz/Desktop/PF_CUDA/build/cp312-cp312-linux_x86_64/CMakeFiles/install/strip.dir

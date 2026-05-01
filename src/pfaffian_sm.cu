@@ -1,9 +1,9 @@
 #include "pfaffian_sm.cuh"
 
-#define RM(A, ld, i, j) ((A)[(i) * (ld) + (j)])
-
 template<typename T>
 __global__ void pf_sm_calc(const T * d_A, const unsigned int n, T * d_result) {
+    __shared__ bool abort;
+
     __shared__ T A[32 * 33];
     
     __shared__ unsigned int P[32];
@@ -19,8 +19,10 @@ __global__ void pf_sm_calc(const T * d_A, const unsigned int n, T * d_result) {
 
         P[c] = c;
 
-        if(c == 0)
+        if(c == 0) {
+            abort = false;
             result = one<T>();
+        }
     }
     __syncwarp();
 
@@ -53,10 +55,18 @@ __global__ void pf_sm_calc(const T * d_A, const unsigned int n, T * d_result) {
             }
 
             const T pivot = CM(A, n, P[k], P[k + 1]);
-            scale = one<T>() / pivot;
-            result *= pivot;
+
+            if(is_zero<T>(pivot)) {
+                abort = true;
+            } else {
+                scale = one<T>() / pivot;
+                result *= pivot;
+            }
         }
         __syncwarp();
+
+        if(abort)
+            break;
 
         if(k + 2 < n) {
             for(int r = k + 2; r < n; r++) {
@@ -80,15 +90,18 @@ __global__ void pf_sm_calc(const T * d_A, const unsigned int n, T * d_result) {
         __syncwarp();
     }
 
-    if(c == 0)
-        *d_result = result;
+    if(c == 0) {
+        if(abort)
+            *d_result = zero<T>();    
+        else
+            *d_result = result;
+    }
 }
 
 template<typename T>
 void pfaffian_sm(const T * d_A, const unsigned int n, T * d_result, cudaStream_t stream) {
     size_t shared_bytes = n * n * sizeof(T);
     pf_sm_calc<T><<<1, 32, shared_bytes, stream>>>(d_A, n, d_result);
-    // pf_sm_calc<T><<<1, dim3(32, 32), 0, stream>>>(d_A, n, d_result);
 }
 
 template void pfaffian_sm<float>(const float*, const unsigned int, float*, cudaStream_t);
