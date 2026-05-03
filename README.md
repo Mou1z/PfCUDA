@@ -1,2 +1,2 @@
-# PF_CUDA
+# PfCUDA
 Pfaffian computations with JAX, CUDA, and C++.
