@@ -37,7 +37,7 @@ The library makes Pfaffian calculations trivial from Python while exposing three
 To install PfCUDA, clone the repository and install it via `pip` from the root directory:
 
 ```bash
-git clone [https://github.com/Mou1z/PfCUDA.git](https://github.com/Mou1z/PfCUDA.git)
+git clone https://github.com/Mou1z/PfCUDA.git
 cd PfCUDA
 pip install .
 
