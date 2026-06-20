@@ -100,20 +100,18 @@ print(f"Pfaffian (GPU): {pf}")
 
 Benchmark scripts are provided in the `benchmarking/` directory. These scripts compare PfCUDA's performance against **Lrux**, an existing JAX-based library.
 
+![PfCUDA vs Lrux pfaffian() benchmark comparison](benchmarks/pfaffian_comparison.png)
+![PfCUDA vs Lrux slog_pfaffian() benchmark comparison](benchmarks/slog_pfaffian_comparison.png)
 
-![PfCUDA vs Lrux slog_pfaffian benchmark comparison](benchmarks/slog_pfaffian_comparison.png)
-*(See `benchmarks/slog_pfaffian_data.json` for raw benchmark data).*
+*(See `benchmarks/pfaffian_data.json` and `benchmarks/slog_pfaffian_data.json` for raw benchmark data).*
 
 ### 🏎️ Performance Summary
 
-As expected with GPU acceleration, there is a modest startup cost for smaller matrices, but PfCUDA exhibits increasingly strong performance as matrix size grows:
+Based on the benchmark data, **PfCUDA** consistently outperforms **Lrux** at scale while maintaining identical numerical precision.
 
-* **Crossover Point:** PfCUDA overtakes Lrux at matrix sizes of roughly **1700 × 1700**.
-* **Peak Speedup:** Delivers up to **~6.7× speedup** versus Lrux at **3000 × 3000**.
-* **Average Speedup:** Averages **~1.9× speedup** over the measured size range.
-* **Numerical Stability:** Both implementations show excellent numerical agreement, with accuracy errors consistently `≤ 1e-11`.
-
----
+* **Small Matrices (`pfaffian` | Sizes 2–32):** PfCUDA exhibits a significant advantage at extremely small scales, operating nearly **10x faster** than Lrux at N=2 (~0.168 vs. ~1.638 time units). As the matrix size approaches 32, the performance gap narrows, but PfCUDA retains a consistent, slight lead (~3.07 vs. ~3.56 time units).
+* **Large Matrices (`slog_pfaffian` | Sizes 100–4900):** This is where PfCUDA's scalability becomes obvious. Although Lrux is initially faster for small workloads at N=100, PfCUDA quickly overtakes it before N=500. By N=4900, PfCUDA achieves an **over 20x speedup**, completing the calculation in ~997 time units compared to Lrux's ~20,369 time units.
+* **Accuracy:** Both libraries maintain exceptionally high precision across all tested sizes. The recorded accuracy errors consistently remain at or near machine zero (ranging from $10^{-11}$ to $10^{-16}$), proving that PfCUDA's speed improvements do not come at the cost of computational correctness.
 
 ## 🛠️ Implementation Details
 
