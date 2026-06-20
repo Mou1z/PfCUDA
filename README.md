@@ -101,8 +101,8 @@ print(f"Pfaffian (GPU): {pf}")
 Benchmark scripts are provided in the `benchmarking/` directory (`benchmark_pfcuda.py` and `benchmark_pfcuda_sm.py`). These scripts compare PfCUDA's performance against **Lrux**, an existing JAX-based library.
 
 
-![PfCUDA vs Lrux slog_pfaffian benchmark comparison](benchmarking/slog_pfaffian_comparison.png)
-*(See `benchmarks/pfaffian_data.json` for raw benchmark data).*
+![PfCUDA vs Lrux slog_pfaffian benchmark comparison](benchmarks/slog_pfaffian_comparison.png)
+*(See `benchmarks/slog_pfaffian_data.json` for raw benchmark data).*
 
 ### 🏎️ Performance Summary
 
