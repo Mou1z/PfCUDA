@@ -1,8 +1,8 @@
-# Install script for directory: /mnt/c/Users/Mouiz/Desktop/PF_CUDA
+# Install script for directory: /mnt/c/Users/Mouiz/Desktop/PfCUDA
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
-  set(CMAKE_INSTALL_PREFIX "/tmp/tmpyvnvtx5h/wheel/platlib")
+  set(CMAKE_INSTALL_PREFIX "/tmp/tmp1thzc1yd/wheel/platlib")
 endif()
 string(REGEX REPLACE "/$" "" CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
 
@@ -49,7 +49,7 @@ if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT
          FILE "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/pfcuda/libcupfaffian.so"
          RPATH "")
   endif()
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/pfcuda" TYPE SHARED_LIBRARY FILES "/mnt/c/Users/Mouiz/Desktop/PF_CUDA/build/cp312-cp312-linux_x86_64/libcupfaffian.so")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/pfcuda" TYPE SHARED_LIBRARY FILES "/mnt/c/Users/Mouiz/Desktop/PfCUDA/build/cp312-cp312-linux_x86_64/libcupfaffian.so")
   if(EXISTS "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/pfcuda/libcupfaffian.so" AND
      NOT IS_SYMLINK "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/pfcuda/libcupfaffian.so")
     if(CMAKE_INSTALL_DO_STRIP)
@@ -62,7 +62,7 @@ if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
-  include("/mnt/c/Users/Mouiz/Desktop/PF_CUDA/build/cp312-cp312-linux_x86_64/CMakeFiles/cu_pfaffian_lib.dir/install-cxx-module-bmi-Release.cmake" OPTIONAL)
+  include("/mnt/c/Users/Mouiz/Desktop/PfCUDA/build/cp312-cp312-linux_x86_64/CMakeFiles/cu_pfaffian_lib.dir/install-cxx-module-bmi-Release.cmake" OPTIONAL)
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
@@ -72,7 +72,7 @@ if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT
          FILE "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/pfcuda/cpupfaffian.cpython-312-x86_64-linux-gnu.so"
          RPATH "")
   endif()
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/pfcuda" TYPE MODULE FILES "/mnt/c/Users/Mouiz/Desktop/PF_CUDA/build/cp312-cp312-linux_x86_64/cpupfaffian.cpython-312-x86_64-linux-gnu.so")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/pfcuda" TYPE MODULE FILES "/mnt/c/Users/Mouiz/Desktop/PfCUDA/build/cp312-cp312-linux_x86_64/cpupfaffian.cpython-312-x86_64-linux-gnu.so")
   if(EXISTS "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/pfcuda/cpupfaffian.cpython-312-x86_64-linux-gnu.so" AND
      NOT IS_SYMLINK "$ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/pfcuda/cpupfaffian.cpython-312-x86_64-linux-gnu.so")
     if(CMAKE_INSTALL_DO_STRIP)
@@ -82,7 +82,7 @@ if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
-  include("/mnt/c/Users/Mouiz/Desktop/PF_CUDA/build/cp312-cp312-linux_x86_64/CMakeFiles/pfaffian_lib.dir/install-cxx-module-bmi-Release.cmake" OPTIONAL)
+  include("/mnt/c/Users/Mouiz/Desktop/PfCUDA/build/cp312-cp312-linux_x86_64/CMakeFiles/pfaffian_lib.dir/install-cxx-module-bmi-Release.cmake" OPTIONAL)
 endif()
 
 if(CMAKE_INSTALL_COMPONENT)
@@ -93,5 +93,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/mnt/c/Users/Mouiz/Desktop/PF_CUDA/build/cp312-cp312-linux_x86_64/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/mnt/c/Users/Mouiz/Desktop/PfCUDA/build/cp312-cp312-linux_x86_64/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

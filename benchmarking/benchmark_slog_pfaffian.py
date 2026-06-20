@@ -7,11 +7,12 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 
 from pfcuda import slog_pfaffian as slog_pfaffian_f64
+from lrux import slogpf
 
 jax.config.update('jax_enable_x64', True)
 jax.config.update('jax_platforms', "cuda")
 
-DATA_FILE = "benchmarks/pfaffian_data.json"
+DATA_FILE = "benchmarks/slog_pfaffian_data.json"
 
 def generate_skew_symmetric(n, seed=None):
     """Generate a random skew-symmetric matrix."""
@@ -23,11 +24,9 @@ def generate_skew_symmetric(n, seed=None):
 
 def benchmark_pfcuda(matrix, n_runs=5, warmup=1):
     """Benchmark the pfcuda slog_pfaffian function."""
-    # Warmup run
     for _ in range(warmup):
         slog_pfaffian_f64(matrix.copy())
     
-    # Timed runs
     times = []
     results = []
     
@@ -35,11 +34,11 @@ def benchmark_pfcuda(matrix, n_runs=5, warmup=1):
         mat_copy = matrix.copy()
         
         start = time.perf_counter()
-        phase, log_abs = slog_pfaffian_f64(mat_copy)
+        log_abs, sign = slog_pfaffian_f64(mat_copy)
         end = time.perf_counter()
         
         times.append(end - start)
-        results.append((float(phase), float(log_abs)))
+        results.append((float(log_abs), float(sign)))
     
     avg_time = np.mean(times)
     std_time = np.std(times)
@@ -47,38 +46,44 @@ def benchmark_pfcuda(matrix, n_runs=5, warmup=1):
     return avg_time, std_time, results, times
 
 
-def check_consistency(results):
-    """Check if multiple runs give consistent results."""
-    if len(results) < 2:
-        return True, 0
+def benchmark_lrux(matrix, n_runs=5, warmup=1):
+    """Benchmark the lrux slogpf function."""
+    for _ in range(warmup):
+        slogpf(matrix.copy())
     
-    phases = [r[0] for r in results]
-    log_abs_vals = [r[1] for r in results]
+    times = []
+    results = []
     
-    # Check phase consistency (should be ±1)
-    phase_diffs = np.abs(np.diff(phases))
+    for _ in range(n_runs):
+        mat_copy = matrix.copy()
+        
+        start = time.perf_counter()
+        sign, log_abs = slogpf(mat_copy)
+        end = time.perf_counter()
+        
+        times.append(end - start)
+        results.append((float(log_abs), float(sign)))
     
-    # Check log_abs consistency
-    log_abs_std = np.std(log_abs_vals)
+    avg_time = np.mean(times)
+    std_time = np.std(times)
     
-    return log_abs_std < 0.1, log_abs_std
+    return avg_time, std_time, results, times
 
 
-def run_benchmarks(sizes, n_runs=5):
-    """Run benchmarks for various matrix sizes."""
+def run_benchmarks(sizes, benchmark_func, function_name, n_runs=5):
+    """Run benchmarks for various matrix sizes using a specific benchmark function."""
     results_data = {
         'sizes': [],
         'avg_times': [],
         'std_times': [],
         'log_abs_values': [],
         'phases': [],
-        'consistency_std': [],
         'expected_log_abs': [],
         'accuracy_errors': []
     }
     
-    print(f"{'N':>6} | {'Avg Time (ms)':>15} | {'Std (ms)':>12} | {'Phase':>8} | {'Log|Pf|':>12} | {'Accuracy Error':>15} | {'Consistency':>12}")
-    print("-" * 110)
+    print(f"{'N':>6} | {'Avg Time (ms)':>15} | {'Std (ms)':>12} | {'Sign':>8} | {'Log|Pf|':>12} | {'Accuracy Error':>15}")
+    print("-" * 98)
     
     for n in sizes:
         if n % 2 != 0:
@@ -90,24 +95,20 @@ def run_benchmarks(sizes, n_runs=5):
             sign, logdet = np.linalg.slogdet(matrix)
             expected_log_abs = 0.5 * logdet
             
-            avg_time, std_time, runs_results, times = benchmark_pfcuda(matrix, n_runs=n_runs)
+            avg_time, std_time, runs_results, times = benchmark_func(matrix, n_runs=n_runs)
             
-            log_abs, phase = runs_results[0]
+            log_abs, sign = runs_results[0]
             accuracy_error = log_abs - expected_log_abs
-            consistent, consistency_std = check_consistency(runs_results)
             
             results_data['sizes'].append(n)
             results_data['avg_times'].append(avg_time * 1000)  # Convert to ms
             results_data['std_times'].append(std_time * 1000)
             results_data['log_abs_values'].append(log_abs)
-            results_data['phases'].append(phase)
-            results_data['consistency_std'].append(consistency_std)
+            results_data['phases'].append(sign)
             results_data['expected_log_abs'].append(expected_log_abs)
             results_data['accuracy_errors'].append(accuracy_error)
             
-            consistency_str = "✓ Good" if consistency_std < 0.1 else "✗ Bad"
-            
-            print(f"{n:6d} | {avg_time*1000:15.4f} | {std_time*1000:12.4f} | {phase:8.1f} | {log_abs:12.4f} | {accuracy_error:15.4f} | {consistency_str:>12}")
+            print(f"{n:6d} | {avg_time*1000:15.4f} | {std_time*1000:12.4f} | {sign:8.1f} | {log_abs:12.4f} | {accuracy_error:15.4f}")
         
         except Exception as e:
             print(f"{n:6d} | Error: {str(e)[:50]}")
@@ -168,7 +169,6 @@ def add_run(data, results_data, function_name):
         'std_times': results_data['std_times'],
         'log_abs_values': results_data['log_abs_values'],
         'phases': results_data['phases'],
-        'consistency_std': results_data['consistency_std'],
         'expected_log_abs': results_data['expected_log_abs'],
         'accuracy_errors': results_data['accuracy_errors']
     }
@@ -182,10 +182,10 @@ def plot_all_benchmarks(data):
     os.makedirs("benchmarks", exist_ok=True)
     
     # Color scheme for different functions
-    colors = {'pfcuda': 'blue', 'lrux': 'orange'}
-    markers = {'pfcuda': 'o', 'lrux': 's'}
+    colors = {'PfCUDA': 'blue', 'Lrux': 'orange'}
+    markers = {'PfCUDA': 'o', 'Lrux': 's'}
     
-    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(24, 6))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 6))
     
     # Track which functions we've seen
     legend_added = set()
@@ -199,7 +199,6 @@ def plot_all_benchmarks(data):
         sizes = run['sizes']
         avg_times = run['avg_times']
         std_times = run['std_times']
-        log_abs_vals = run['log_abs_values']
         accuracy_errors = run.get('accuracy_errors', [])
         
         # Execution time plot
@@ -207,13 +206,9 @@ def plot_all_benchmarks(data):
         ax1.errorbar(sizes, avg_times, yerr=std_times, fmt=f'{marker}-', 
                     capsize=3, label=label, color=color, alpha=0.7, markersize=6)
         
-        # Log|Pf| plot
-        ax2.plot(sizes, log_abs_vals, f'{marker}-', label=label, 
-                color=color, alpha=0.7, markersize=6)
-        
         # Accuracy error plot
         if accuracy_errors:
-            ax3.plot(sizes, accuracy_errors, f'{marker}-', label=label, 
+            ax2.plot(sizes, accuracy_errors, f'{marker}-', label=label, 
                     color=color, alpha=0.7, markersize=6)
         
         legend_added.add(function)
@@ -225,23 +220,16 @@ def plot_all_benchmarks(data):
     ax1.grid(True, alpha=0.3)
     ax1.legend(fontsize=11)
     
-    # Log|Pf| plot
+    # Accuracy error plot
     ax2.set_xlabel('Matrix Size (N x N)', fontsize=12, fontweight='bold')
-    ax2.set_ylabel('log|Pf|', fontsize=12, fontweight='bold')
-    ax2.set_title('Pfaffian Log Absolute Value Comparison', fontsize=13, fontweight='bold')
+    ax2.set_ylabel('Accuracy Error (log|Pf| - expected)', fontsize=12, fontweight='bold')
+    ax2.set_title('Pfaffian Accuracy Error (Divergence from Expected)', fontsize=13, fontweight='bold')
+    ax2.axhline(y=0, color='red', linestyle='--', linewidth=2, label='Expected (0)')
     ax2.grid(True, alpha=0.3)
     ax2.legend(fontsize=11)
     
-    # Accuracy error plot
-    ax3.set_xlabel('Matrix Size (N x N)', fontsize=12, fontweight='bold')
-    ax3.set_ylabel('Accuracy Error (log|Pf| - expected)', fontsize=12, fontweight='bold')
-    ax3.set_title('Pfaffian Accuracy Error (Divergence from Expected)', fontsize=13, fontweight='bold')
-    ax3.axhline(y=0, color='red', linestyle='--', linewidth=2, label='Expected (0)')
-    ax3.grid(True, alpha=0.3)
-    ax3.legend(fontsize=11)
-    
     plt.tight_layout()
-    save_path = "benchmarks/pfaffian_comparison.png"
+    save_path = "benchmarks/slog_pfaffian_comparison.png"
     plt.savefig(save_path, dpi=150)
     print(f"\n✓ Comparison graph saved to {save_path}")
     plt.close()
@@ -249,18 +237,22 @@ def plot_all_benchmarks(data):
 
 if __name__ == "__main__":
     # Benchmark sizes
-    matrix_sizes = range(100, 4001, 100)
+    matrix_sizes = range(100, 3001, 100)
     
-    print("Benchmarking pfcuda slog_pfaffian_f64")
+    print("Benchmarking PfCUDA slog_pfaffian_f64")
     print("="*110)
+    pfcuda_results = run_benchmarks(matrix_sizes, benchmark_pfcuda, 'PfCUDA', n_runs=10)
+    print_summary(pfcuda_results)
     
-    # Run benchmarks
-    results = run_benchmarks(matrix_sizes, n_runs=10)
-    print_summary(results)
+    print("\nBenchmarking Lrux slogpf")
+    print("="*110)
+    lrux_results = run_benchmarks(matrix_sizes, benchmark_lrux, 'Lrux', n_runs=10)
+    print_summary(lrux_results)
     
-    # Load existing data and add new run
+    # Load existing data and add new runs
     all_data = load_or_create_data()
-    all_data = add_run(all_data, results, 'pfcuda')
+    all_data = add_run(all_data, pfcuda_results, 'PfCUDA')
+    all_data = add_run(all_data, lrux_results, 'Lrux')
     save_data(all_data)
     
     print(f"\n✓ Data saved to {DATA_FILE}")
