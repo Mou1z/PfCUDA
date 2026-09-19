@@ -1,1 +1,13 @@
+# virtualenv
+.venv/
+
+# build outputs
 build/
+.build/
+pfcuda/*.so
+*.egg-info/
+
+# python
+__pycache__/
+*.py[cod]
+.pytest_cache/

@@ -1,0 +1,409 @@
+#!/usr/bin/env bash
+#
+# PfCUDA development driver.
+#
+#   ./dev              incremental build (the common case)
+#   ./dev test [args]  pytest (extra args are forwarded)
+#   ./dev bench [args] run the benchmark scripts
+#   ./dev doctor       report on the environment, change nothing
+#   ./dev shell        print an eval-able line to activate the venv
+#   ./dev clean        remove build outputs (keeps the venv)
+#   ./dev clean --all  also remove the venv
+#
+# Every command runs the same preflight. Steps already satisfied are skipped in
+# milliseconds, so a no-op build costs well under a second.
+#
+# Environment overrides:
+#   PFCUDA_BUILD_DIR     where object files go (default: auto, see pick_build_dir)
+#   PFCUDA_JAX_CUDA      12 or 13 -- jax CUDA plugin to install (default: auto)
+#   PFCUDA_CUDA_ARCH     value for CMAKE_CUDA_ARCHITECTURES (default: native)
+#   CUDACXX / CUDA_HOME  where to find nvcc
+#   PFCUDA_JOBS          parallel compile jobs (default: all cores)
+
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$REPO_ROOT"
+
+VENV="$REPO_ROOT/.venv"
+PY="$VENV/bin/python"
+STAMPS="$VENV/.pfcuda-stamps"
+
+if [ -t 1 ]; then
+    B=$(printf '\033[1m'); R=$(printf '\033[31m'); G=$(printf '\033[32m')
+    Y=$(printf '\033[33m'); D=$(printf '\033[2m');  N=$(printf '\033[0m')
+else
+    B=; R=; G=; Y=; D=; N=
+fi
+
+say()  { printf '%s==>%s %s\n' "$B" "$N" "$*"; }
+skip() { printf '%s  ·  %s%s\n' "$D" "$*" "$N"; }
+ok()   { printf '%s  ✓  %s%s\n' "$G" "$*" "$N"; }
+
+die() {
+    printf '\n%serror:%s %s\n' "$R" "$N" "$1" >&2
+    if [ $# -gt 1 ]; then printf '\n%s\n' "$2" >&2; fi
+    exit 1
+}
+
+# Object files are thousands of small writes. On a WSL drvfs/9p share that is an
+# order of magnitude slower than a native path, so relocate off the share.
+pick_build_dir() {
+    if [ -n "${PFCUDA_BUILD_DIR:-}" ]; then
+        printf '%s' "$PFCUDA_BUILD_DIR"; return
+    fi
+    case "$(stat -f -c %T "$REPO_ROOT" 2>/dev/null || echo unknown)" in
+        9p|v9fs|drvfs|cifs|smb2|nfs)
+            local key
+            key=$(printf '%s' "$REPO_ROOT" | cksum | cut -d' ' -f1)
+            printf '%s/pfcuda/build-%s' "${XDG_CACHE_HOME:-$HOME/.cache}" "$key"
+            ;;
+        *)
+            printf '%s/.build' "$REPO_ROOT"
+            ;;
+    esac
+}
+
+# Pin the generator rather than inheriting CMAKE_GENERATOR, so the tool we
+# check for in check_tools is the tool the build actually uses.
+pick_generator() {
+    if command -v ninja >/dev/null 2>&1; then printf 'Ninja'; else printf 'Unix Makefiles'; fi
+}
+
+find_nvcc() {
+    local c
+    for c in "${CUDACXX:-}" "${CUDA_HOME:-}/bin/nvcc" "${CUDA_PATH:-}/bin/nvcc" \
+             /usr/local/cuda/bin/nvcc /opt/cuda/bin/nvcc; do
+        if [ -n "$c" ] && [ -x "$c" ]; then printf '%s' "$c"; return 0; fi
+    done
+    c=$(command -v nvcc 2>/dev/null || true)
+    if [ -n "$c" ]; then printf '%s' "$c"; return 0; fi
+    return 1
+}
+
+# nvidia-smi costs ~50ms and is read more than once per run; cache it.
+nvsmi() {
+    if [ -z "${NVSMI_CACHED:-}" ]; then
+        NVSMI_OUTPUT=$(nvidia-smi 2>/dev/null || true)
+        NVSMI_CACHED=1
+    fi
+    printf '%s' "$NVSMI_OUTPUT"
+}
+
+driver_cuda() {
+    nvsmi | sed -n 's/.*CUDA Version: \([0-9.]*\).*/\1/p' | head -1
+}
+
+# jax ships separate CUDA 12 and CUDA 13 plugins. The driver reports the highest
+# runtime it supports, which is what decides between them.
+detect_jax_cuda() {
+    if [ -n "${PFCUDA_JAX_CUDA:-}" ]; then printf '%s' "$PFCUDA_JAX_CUDA"; return; fi
+    local major
+    major=$(driver_cuda | cut -d. -f1)
+    case "$major" in
+        ''|*[!0-9]*) printf '12' ;;
+        *) if [ "$major" -ge 13 ]; then printf '13'; else printf '12'; fi ;;
+    esac
+}
+
+# Prefer the distro default: a bleeding-edge interpreter is the one least
+# likely to have jax CUDA wheels published for it yet.
+host_python() {
+    local c
+    for c in python3 python3.12 python3.13 python3.11 python3.10 python3.9; do
+        command -v "$c" >/dev/null 2>&1 || continue
+        if "$c" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)' 2>/dev/null; then
+            printf '%s' "$c"; return 0
+        fi
+    done
+    return 1
+}
+
+version_of() {
+    local cmd=$1
+    command -v "$cmd" >/dev/null 2>&1 || { printf 'MISSING'; return; }
+    "$cmd" --version 2>/dev/null | head -1
+}
+
+BUILD_DIR="$(pick_build_dir)"
+JOBS="${PFCUDA_JOBS:-$(nproc 2>/dev/null || echo 4)}"
+
+require() {
+    command -v "$1" >/dev/null 2>&1 || die "$1 not found." "$2"
+}
+
+check_tools() {
+    local nvcc
+    require cmake "Install it, e.g.:  sudo apt install cmake      (PfCUDA needs >= 3.18)"
+    require c++   "Install one, e.g.:  sudo apt install build-essential"
+
+    if ! command -v ninja >/dev/null 2>&1 && ! command -v make >/dev/null 2>&1; then
+        die "No build tool found (looked for ninja and make)." \
+            "Install one, e.g.:  sudo apt install build-essential"
+    fi
+
+    nvcc=$(find_nvcc) || die \
+        "nvcc (the CUDA compiler) was not found." \
+        "PfCUDA's GPU kernels need the CUDA Toolkit. Install it from
+https://developer.nvidia.com/cuda-downloads, or point this script at an
+existing install:
+
+    CUDA_HOME=/path/to/cuda ./dev
+
+Searched: \$CUDACXX, \$CUDA_HOME/bin, \$CUDA_PATH/bin, /usr/local/cuda/bin,
+/opt/cuda/bin, and \$PATH."
+
+    export CUDACXX="$nvcc"
+    PATH="$(dirname "$nvcc"):$PATH"
+    export PATH
+}
+
+ensure_venv() {
+    local hp
+    if [ -x "$PY" ]; then
+        skip "venv (.venv)"
+        return
+    fi
+    hp=$(host_python) || die \
+        "No Python >= 3.9 found." \
+        "Install one, e.g.:  sudo apt install python3 python3-venv python3-dev"
+
+    say "Creating .venv with $hp (first run only)"
+    "$hp" -m venv "$VENV" 2>/dev/null || die \
+        "Failed to create a virtualenv with $hp." \
+        "On Debian/Ubuntu the venv module ships separately:
+    sudo apt install python3-venv"
+    "$PY" -m pip install --upgrade --quiet pip wheel
+    ok "venv created"
+}
+
+# Python.h ships separately on most distros; fail here rather than deep
+# inside CMake.
+check_python_headers() {
+    local inc
+    inc=$("$PY" -c 'import sysconfig; print(sysconfig.get_path("include"))')
+    [ -f "$inc/Python.h" ] || die \
+        "Python headers (Python.h) not found in $inc" \
+        "Install the development package, e.g.:
+    sudo apt install python3-dev"
+}
+
+ensure_deps() {
+    local jax_cuda want stamp
+    jax_cuda=$(detect_jax_cuda)
+    want="jax-cuda${jax_cuda}|$(cksum < "$REPO_ROOT/requirements.txt")"
+    stamp="$STAMPS/deps"
+
+    if [ -f "$stamp" ] && [ "$(cat "$stamp")" = "$want" ]; then
+        skip "dependencies"
+        return
+    fi
+
+    say "Installing dependencies (first run downloads ~2-3 GB of CUDA wheels)"
+    "$PY" -m pip install --quiet "jax[cuda${jax_cuda}]" || die \
+        "Failed to install jax[cuda${jax_cuda}]." \
+        "If your driver supports a different CUDA major version, override it:
+    PFCUDA_JAX_CUDA=12 ./dev"
+    "$PY" -m pip install --quiet -r "$REPO_ROOT/requirements.txt"
+
+    mkdir -p "$STAMPS"
+    printf '%s' "$want" > "$stamp"
+    ok "dependencies installed (jax CUDA ${jax_cuda})"
+}
+
+# Put the repo on sys.path so `import pfcuda` resolves to the source tree, where
+# the build drops its .so files. A copy left in site-packages by an earlier
+# `pip install .` would shadow it, so remove that first.
+link_repo() {
+    local purelib pth
+    purelib=$("$PY" -c 'import sysconfig; print(sysconfig.get_path("purelib"))')
+    case "$purelib" in
+        */site-packages|*/dist-packages) ;;
+        *) die "Refusing to touch an unexpected site-packages path: '$purelib'" ;;
+    esac
+    pth="$purelib/_pfcuda_dev.pth"
+
+    if [ -e "$purelib/pfcuda" ]; then
+        say "Removing installed pfcuda copy (it would shadow the source tree)"
+        "$PY" -m pip uninstall -y pfcuda >/dev/null 2>&1 || true
+        rm -rf "${purelib:?}/pfcuda"
+        ok "removed"
+    fi
+
+    if [ -f "$pth" ] && [ "$(cat "$pth")" = "$REPO_ROOT" ]; then
+        skip "source tree linked into venv"
+        return
+    fi
+    printf '%s' "$REPO_ROOT" > "$pth"
+    ok "linked source tree into venv"
+}
+
+configure() {
+    local args
+    if [ -f "$BUILD_DIR/CMakeCache.txt" ]; then
+        skip "cmake configured ($BUILD_DIR)"
+        return
+    fi
+    say "Configuring CMake -> $BUILD_DIR"
+    mkdir -p "$BUILD_DIR"
+    args=(-S "$REPO_ROOT" -B "$BUILD_DIR" -Wno-dev
+          -G "$(pick_generator)"
+          -DCMAKE_BUILD_TYPE=Release
+          -DPython_EXECUTABLE="$PY"
+          -DPFCUDA_DEV_INPLACE=ON)
+    if [ -n "${PFCUDA_CUDA_ARCH:-}" ]; then
+        args+=(-DCMAKE_CUDA_ARCHITECTURES="$PFCUDA_CUDA_ARCH")
+    fi
+    if ! cmake "${args[@]}" > "$BUILD_DIR/configure.log" 2>&1; then
+        cat "$BUILD_DIR/configure.log" >&2
+        rm -f "$BUILD_DIR/CMakeCache.txt"
+        die "CMake configure failed (log above)."
+    fi
+    ok "configured"
+}
+
+preflight() {
+    check_tools
+    ensure_venv
+    check_python_headers
+    ensure_deps
+    link_repo
+    configure
+}
+
+cmd_build() {
+    preflight
+    say "Building (-j$JOBS)"
+    cmake --build "$BUILD_DIR" -j"$JOBS"
+    ok "pfcuda/ libraries up to date"
+}
+
+cmd_test() {
+    cmd_build
+    say "Running tests"
+    "$PY" -m pytest "$@"
+}
+
+cmd_bench() {
+    cmd_build
+    say "Running benchmarks"
+    if [ $# -gt 0 ]; then
+        "$PY" "$@"
+    else
+        "$PY" benchmarking/benchmark_pfaffian.py
+        "$PY" benchmarking/benchmark_slog_pfaffian.py
+    fi
+}
+
+cmd_doctor() {
+    local nvcc
+    printf '%sPfCUDA environment%s\n\n' "$B" "$N"
+    printf '  repo            %s\n' "$REPO_ROOT"
+    printf '  filesystem      %s\n' "$(stat -f -c %T "$REPO_ROOT" 2>/dev/null || echo unknown)"
+    printf '  build dir       %s\n' "$BUILD_DIR"
+    printf '  generator       %s (-j%s)\n' "$(pick_generator)" "$JOBS"
+    printf '  os              %s\n' "$(uname -sr)"
+    if grep -qi microsoft /proc/version 2>/dev/null; then printf '  wsl             yes\n'; fi
+    printf '\n'
+    printf '  cmake           %s\n' "$(version_of cmake)"
+    printf '  c++             %s\n' "$(version_of c++)"
+    if nvcc=$(find_nvcc); then
+        printf '  nvcc            %s (release %s)\n' "$nvcc" \
+            "$("$nvcc" --version | sed -n 's/.*release \([0-9.]*\).*/\1/p')"
+    else
+        printf '  nvcc            %sMISSING%s\n' "$R" "$N"
+    fi
+    printf '  gpu             %s\n' \
+        "$(nvidia-smi --query-gpu=name,compute_cap --format=csv,noheader 2>/dev/null | paste -sd';' - || echo 'none detected')"
+    printf '  driver cuda     %s\n' "$(driver_cuda || echo 'none detected')"
+    printf '  jax plugin      cuda%s\n' "$(detect_jax_cuda)"
+    printf '\n'
+
+    if [ ! -x "$PY" ]; then
+        printf '  venv            %snot created -- run ./dev%s\n\n' "$Y" "$N"
+        return
+    fi
+
+    # One interpreter for everything below. Only the device probe imports jax,
+    # which costs ~8s, so the cheap lines are flushed first.
+    "$PY" - <<'PYPROBE'
+import importlib.metadata as md, os, sys
+
+def ver(pkg):
+    try:
+        return md.version(pkg)
+    except Exception:
+        return "not installed"
+
+print(f"  venv python     {sys.version.split()[0]} ({sys.executable})", flush=True)
+for pkg in ("jax", "jaxlib", "pytest", "numpy"):
+    print(f"  {pkg:<15} {ver(pkg)}", flush=True)
+if sys.stdout.isatty():
+    print("  jax devices     (importing jax...)", end="\r", flush=True)
+
+try:
+    import pfcuda
+    location = os.path.dirname(pfcuda.__file__)
+except Exception as exc:
+    location = f"NO -- {type(exc).__name__}: {exc}"
+try:
+    import jax
+    devices = jax.devices()
+except Exception as exc:
+    devices = f"unavailable ({exc})"
+
+print(f"  jax devices     {devices}" + " " * 12)
+print(f"  imports pfcuda  {location}")
+PYPROBE
+
+    printf '\n  built libs      %s\n' \
+        "$(ls pfcuda/*.so 2>/dev/null | paste -sd' ' - || echo 'none -- run ./dev build')"
+}
+
+cmd_clean() {
+    case "${1:-}" in
+        ''|--all) ;;
+        *) die "Unknown option for clean: $1" "Usage: ./dev clean [--all]" ;;
+    esac
+    say "Removing build outputs"
+    # build/ is scikit-build-core's wheel tree, left by `pip install .`.
+    rm -rf "$BUILD_DIR" "$REPO_ROOT/.build" "$REPO_ROOT/build"
+    rm -f pfcuda/*.so
+    find "$REPO_ROOT" -name '__pycache__' -type d -not -path '*/.venv/*' -exec rm -rf {} + 2>/dev/null || true
+    ok "cleaned"
+    if [ "${1:-}" = "--all" ]; then
+        say "Removing .venv"
+        rm -rf "$VENV"
+        ok "removed"
+    fi
+}
+
+cmd_shell() {
+    printf 'source %s/bin/activate\n' "$VENV"
+}
+
+# The header comment block is the usage text, so the two cannot drift apart.
+cmd_help() {
+    awk 'NR == 1 { next }
+         /^#/    { sub(/^#[[:space:]]?/, ""); print; next }
+                 { exit }' "$0"
+}
+
+reject_args() {
+    local name=$1; shift
+    [ $# -eq 0 ] || die "./dev $name takes no arguments (got: $*)" "Run ./dev --help for usage."
+}
+
+cmd="${1:-build}"
+if [ $# -gt 0 ]; then shift; fi
+
+case "$cmd" in
+    build)  reject_args build "$@";  cmd_build ;;
+    test)   cmd_test "$@" ;;
+    bench)  cmd_bench "$@" ;;
+    doctor) reject_args doctor "$@"; cmd_doctor ;;
+    clean)  cmd_clean "$@" ;;
+    shell)  reject_args shell "$@";  cmd_shell ;;
+    -h|--help|help) cmd_help ;;
+    *)      die "Unknown command: $cmd" "Run ./dev --help for usage." ;;
+esac

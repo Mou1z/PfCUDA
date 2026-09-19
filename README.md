@@ -47,6 +47,44 @@ pip install .
 
 ---
 
+## 🧑‍💻 Development
+
+If you intend to modify the CUDA or C++ sources, use the `./dev` driver instead of
+`pip install .`. It compiles the libraries straight into `pfcuda/` and puts the repo
+on the interpreter's path, so a rebuild is an incremental `make` rather than a full
+wheel build — roughly **5 seconds instead of two minutes**.
+
+```bash
+git clone https://github.com/Mou1z/PfCUDA.git
+cd PfCUDA
+./dev
+```
+
+The first run creates `.venv`, detects whether your driver needs the CUDA 12 or CUDA 13
+`jax` plugin, installs the dependencies, and configures CMake. That takes a few minutes,
+almost entirely spent downloading the NVIDIA wheels. Every run after that is incremental.
+
+| Command | Purpose |
+| --- | --- |
+| `./dev` | Incremental build (the common case) |
+| `./dev test` | Build, then run the test suite |
+| `./dev bench` | Build, then run the benchmark scripts |
+| `./dev doctor` | Report on the environment; changes nothing |
+| `./dev clean` | Remove build outputs (`--all` also removes `.venv`) |
+
+On Windows, run `.\dev.ps1 <command>` from PowerShell; it forwards into WSL, where the
+CUDA toolchain lives. Run `./dev --help` for the available environment overrides
+(`PFCUDA_JAX_CUDA`, `PFCUDA_CUDA_ARCH`, `PFCUDA_BUILD_DIR`, `CUDA_HOME`, `PFCUDA_JOBS`).
+
+**Requirements:** Linux or WSL, an NVIDIA GPU, the CUDA Toolkit, CMake ≥ 3.18, a C++17
+compiler, and Python ≥ 3.9 with headers (`python3-dev`). `./dev doctor` reports which of
+these it found, and any missing piece produces a message naming the package to install.
+
+`pip install .` remains the path for *using* the library rather than developing it, and
+is unaffected by the above.
+
+---
+
 ## 🚀 Quick Start
 
 Here is a minimal working example demonstrating the different backends:
@@ -138,8 +176,7 @@ Available in `pfcuda/pfaffian_py.py` for portability, validation, and fallback u
 Ensure your environment is working correctly by running the test suite:
 
 ```bash
-pytest test/
-
+./dev test
 ```
 
 ### Requirements
