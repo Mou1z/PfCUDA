@@ -17,6 +17,31 @@ jax.ffi.register_ffi_target('slog_pfaffian_f64', jax.ffi.pycapsule(lib.slog_pfaf
 jax.ffi.register_ffi_target('slog_pfaffian_c64', jax.ffi.pycapsule(lib.slog_pfaffian_c64), platform='CUDA')
 jax.ffi.register_ffi_target('slog_pfaffian_c128', jax.ffi.pycapsule(lib.slog_pfaffian_c128), platform='CUDA')
 
+_cuda_backend = None
+
+
+def _require_cuda_backend():
+    """Fail with an actionable message instead of 'No FFI handler registered'.
+
+    Plain `jax` is CPU-only and installs happily alongside compiled kernels, so
+    this is the likeliest way for a working install to still not run. Probed on
+    first use rather than at import, to avoid initialising a JAX backend as a
+    side effect of `import pfcuda`.
+    """
+    global _cuda_backend
+    if _cuda_backend is None:
+        try:
+            _cuda_backend = bool(jax.devices('cuda'))
+        except RuntimeError:
+            _cuda_backend = False
+    if not _cuda_backend:
+        raise RuntimeError(
+            'pfcuda GPU kernels need a CUDA-enabled jaxlib, but JAX reports '
+            f'only {jax.devices()}. Install the plugin matching your driver:\n'
+            '    pip install "pfcuda[cuda13]"   (or "pfcuda[cuda12]")'
+        )
+
+
 TYPE_MAPPINGS = {
     jnp.dtype(jnp.float32): '_f32',
     jnp.dtype(jnp.float64): '_f64',
@@ -44,6 +69,8 @@ def pfaffian(A):
     if n > 32:
         raise ValueError("Matrix size exceeds the maximum supported size of 32x32.")
 
+    _require_cuda_backend()
+
     func = jax.ffi.ffi_call(
         'pfaffian' + TYPE_MAPPINGS[A.dtype],
         jax.ShapeDtypeStruct((), A.dtype),
@@ -65,6 +92,8 @@ def slog_pfaffian(A):
             jnp.array(-jnp.inf, dtype=jnp.float64),
             jnp.array(0, dtype=A.dtype)
         )
+
+    _require_cuda_backend()
 
     func = jax.ffi.ffi_call(
         'slog_pfaffian' + TYPE_MAPPINGS[A.dtype],

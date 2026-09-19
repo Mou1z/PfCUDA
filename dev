@@ -246,14 +246,14 @@ configure() {
     fi
     say "Configuring CMake -> $BUILD_DIR"
     mkdir -p "$BUILD_DIR"
+    # `native` builds only for this machine's GPU: ~2x faster to compile than
+    # the portable all-major default that CMakeLists uses for distribution.
     args=(-S "$REPO_ROOT" -B "$BUILD_DIR" -Wno-dev
           -G "$(pick_generator)"
           -DCMAKE_BUILD_TYPE=Release
           -DPython_EXECUTABLE="$PY"
-          -DPFCUDA_DEV_INPLACE=ON)
-    if [ -n "${PFCUDA_CUDA_ARCH:-}" ]; then
-        args+=(-DCMAKE_CUDA_ARCHITECTURES="$PFCUDA_CUDA_ARCH")
-    fi
+          -DPFCUDA_DEV_INPLACE=ON
+          -DCMAKE_CUDA_ARCHITECTURES="${PFCUDA_CUDA_ARCH:-native}")
     if ! cmake "${args[@]}" > "$BUILD_DIR/configure.log" 2>&1; then
         cat "$BUILD_DIR/configure.log" >&2
         rm -f "$BUILD_DIR/CMakeCache.txt"
@@ -302,6 +302,7 @@ cmd_doctor() {
     printf '  filesystem      %s\n' "$(stat -f -c %T "$REPO_ROOT" 2>/dev/null || echo unknown)"
     printf '  build dir       %s\n' "$BUILD_DIR"
     printf '  generator       %s (-j%s)\n' "$(pick_generator)" "$JOBS"
+    printf '  cuda arch       %s\n' "${PFCUDA_CUDA_ARCH:-native (all-major for pip install)}"
     printf '  os              %s\n' "$(uname -sr)"
     if grep -qi microsoft /proc/version 2>/dev/null; then printf '  wsl             yes\n'; fi
     printf '\n'

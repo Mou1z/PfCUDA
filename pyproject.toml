@@ -4,14 +4,44 @@ build-backend = "scikit_build_core.build"
 
 [project]
 name = "pfcuda"
-version = "0.1.0"
-description = "A JAX/CUDA/C++ library for computing the Pfaffian of a matrix."
+version = "0.1.1"
+description = "GPU-accelerated Pfaffian computation for JAX, with C++ and NumPy CPU backends."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+authors = [{ name = "Muhammad Mouiz Ghouri" }]
+keywords = ["pfaffian", "cuda", "gpu", "jax", "skew-symmetric", "linear-algebra"]
+
+# jax.ffi became a public module in jax 0.5.0; earlier releases cannot run this
+# package even though they would install cleanly. Tested against jax 0.11.1.
 dependencies = [
-    "jax>=0.4.0",
-    "jaxlib>=0.4.0",
+    "jax>=0.5.0",
+    "jaxlib>=0.5.0",
+    "numpy>=1.24",
 ]
+
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: C++",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Mathematics",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Environment :: GPU :: NVIDIA CUDA",
+]
+
+# Plain `jax` is CPU-only: it builds fine but cannot run the kernels. These
+# extras pull the matching CUDA plugin; pick the one your driver supports.
+[project.optional-dependencies]
+cuda12 = ["jax[cuda12]>=0.5.0"]
+cuda13 = ["jax[cuda13]>=0.5.0"]
+
+[project.urls]
+Homepage = "https://github.com/Mou1z/PfCUDA"
+Repository = "https://github.com/Mou1z/PfCUDA"
+Issues = "https://github.com/Mou1z/PfCUDA/issues"
 
 [tool.scikit-build]
 cmake.version = ">=3.18"

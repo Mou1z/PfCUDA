@@ -1,13 +1,40 @@
 cmake_minimum_required(VERSION 3.18)
 
-# Target whatever GPU the build machine has, unless the caller pins an
-# architecture (e.g. -DCMAKE_CUDA_ARCHITECTURES=75 for a portable wheel).
-# Must be decided before project() so CUDA compiler detection picks it up.
+# Build for every major architecture the installed toolkit supports. `native`
+# would be smaller and faster to compile, but nvcc only warns when it cannot
+# see a GPU ("Cannot find valid GPU for '-arch=native', default arch is used")
+# and then targets its default, so builds on GPU-less machines -- containers,
+# CI, HPC login nodes -- would silently produce a binary that fails on the
+# card it eventually runs on. A fixed list is not portable either, since CUDA
+# 13 dropped everything below sm_75; all-major asks nvcc what it supports.
+# ./dev overrides this with `native` for fast local iteration.
+# Must be decided before project(), which consumes it during compiler detection.
 if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
-    if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.24)
-        set(CMAKE_CUDA_ARCHITECTURES native)
+    if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.23)
+        set(CMAKE_CUDA_ARCHITECTURES all-major)
     else()
-        set(CMAKE_CUDA_ARCHITECTURES 70 75 80 86)
+        set(CMAKE_CUDA_ARCHITECTURES 75 80 86)
+    endif()
+endif()
+
+# A plain `pip install .` runs with whatever PATH the user's shell has, and a
+# CUDA Toolkit installed outside PATH is the common case. Look in the usual
+# places before project() gives up with "CUDA compiler identification unknown".
+if(NOT DEFINED CMAKE_CUDA_COMPILER AND NOT DEFINED ENV{CUDACXX})
+    find_program(PFCUDA_NVCC nvcc
+        HINTS ENV CUDA_HOME ENV CUDA_PATH ENV CUDA_ROOT /usr/local/cuda /opt/cuda
+        PATH_SUFFIXES bin)
+    if(PFCUDA_NVCC)
+        set(CMAKE_CUDA_COMPILER "${PFCUDA_NVCC}")
+    else()
+        message(FATAL_ERROR
+            "Could not find nvcc, the CUDA compiler.\n"
+            "PfCUDA compiles CUDA kernels from source, so the CUDA Toolkit must "
+            "be installed: https://developer.nvidia.com/cuda-downloads\n"
+            "If it is installed somewhere unusual, point CMake at it with "
+            "CUDA_HOME=/path/to/cuda or CUDACXX=/path/to/nvcc.\n"
+            "Searched: PATH, $CUDA_HOME/bin, $CUDA_PATH/bin, $CUDA_ROOT/bin, "
+            "/usr/local/cuda/bin, /opt/cuda/bin.")
     endif()
 endif()
 
