@@ -1,29 +1,34 @@
 # PfCUDA
 
+[![CI](https://github.com/Mou1z/PfCUDA/actions/workflows/ci.yml/badge.svg)](https://github.com/Mou1z/PfCUDA/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/pfcuda.svg)](https://pypi.org/project/pfcuda/)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![CUDA Supported](https://img.shields.io/badge/CUDA-Supported-76B900.svg)](https://developer.nvidia.com/cuda-toolkit)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 **GPU-accelerated Pfaffian computation for JAX.**
 
-For a `2n x 2n` skew-symmetric matrix `A`, the Pfaffian satisfies `Pf(A)^2 = det(A)`.
-PfCUDA computes it with CUDA kernels exposed through JAX's foreign function
-interface, with differentiable (JVP) support, plus C++ and NumPy CPU backends.
+Every skew-symmetric matrix `A` has a Pfaffian: a number whose square is the
+determinant, `Pf(A)^2 = det(A)`. Unlike the determinant it keeps a meaningful
+sign, which is why it turns up in quantum many-body physics.
+
+PfCUDA computes it with CUDA kernels that plug into JAX, so the result works
+with `jax.grad`, `jax.jit` and `jax.vmap` like any other JAX operation. C++ and
+NumPy versions are included for machines without a GPU.
 
 ---
 
 ## ⚙️ Requirements
 
-PfCUDA compiles CUDA kernels from source at install time, so you need a CUDA
-Toolkit — not just a driver.
+Installing PfCUDA compiles CUDA code on your machine, so you need the CUDA
+Toolkit — a graphics driver on its own is not enough.
 
 | Requirement | Notes |
 | --- | --- |
-| NVIDIA GPU | compute capability 7.5+ with a CUDA 13 toolkit, which dropped support for older cards; earlier toolkits reach further back |
-| CUDA Toolkit | provides `nvcc`; found via `PATH`, `CUDA_HOME` or `/usr/local/cuda` |
-| CMake ≥ 3.18, C++17 compiler | |
-| Python ≥ 3.10 | with development headers (`python3-dev`) |
-| `jax` ≥ 0.5.0 | `jax.ffi` became public in 0.5.0; tested against 0.11.1 |
+| NVIDIA GPU | Compute capability 7.5 or newer if you build with CUDA 13, which dropped support for older cards. Older CUDA versions still support older GPUs. |
+| CUDA Toolkit | Supplies `nvcc`. Found automatically on `PATH`, in `CUDA_HOME`, or at `/usr/local/cuda`. |
+| CMake ≥ 3.18 and a C++17 compiler | |
+| Python ≥ 3.10 | Including the development headers (`python3-dev` on Debian/Ubuntu). |
+| `jax` ≥ 0.5.0 | Earlier versions lack the interface PfCUDA plugs into. Tested against 0.11.1. |
 
 **Platform support** follows JAX's own CUDA support:
 
@@ -48,20 +53,23 @@ Pick the extra matching your driver's CUDA version (`nvidia-smi` reports it):
 pip install "pfcuda[cuda13]"    # or "pfcuda[cuda12]"
 ```
 
-This builds from source and takes a couple of minutes. The extra matters: plain
-`pip install pfcuda` pulls a **CPU-only** jax, which compiles fine but then
-fails at call time with `No FFI handler registered`.
+This compiles on your machine and takes a couple of minutes.
 
-If `nvcc` lives somewhere unusual, point the build at it:
+**Don't skip the `[cuda13]` part.** Plain `pip install pfcuda` installs the
+CPU-only build of JAX. Everything compiles, and then the GPU functions fail
+when you call them.
+
+If `nvcc` is somewhere unusual, say where:
 
 ```bash
 CUDA_HOME=/path/to/cuda pip install "pfcuda[cuda13]"
 ```
 
-Kernels are compiled for every major architecture your CUDA toolkit supports,
-so **building where no GPU is visible works** — inside a container, in CI, or on
-an HPC login node before running on a GPU node. To build only for the card in
-the build machine, which is smaller and about twice as fast to compile:
+**Building on a machine with no GPU works**, which matters in a container, in
+CI, or on a cluster login node where you build before submitting to a GPU node.
+PfCUDA compiles for every GPU generation your CUDA Toolkit supports, so the
+result runs wherever you send it. If you only care about the card in the build
+machine, this is smaller and about twice as fast to compile:
 
 ```bash
 CMAKE_ARGS="-DCMAKE_CUDA_ARCHITECTURES=native" pip install "pfcuda[cuda13]"
@@ -75,10 +83,13 @@ cd PfCUDA
 pip install .
 ```
 
-> **Upgrading JAX?** The compiled kernels bind to the XLA FFI ABI of the jaxlib
-> they were built against, and that ABI is not stable across releases. After
-> upgrading `jax`/`jaxlib`, reinstall PfCUDA with
-> `pip install --force-reinstall --no-binary pfcuda pfcuda`.
+> **Upgrading JAX later?** Reinstall PfCUDA afterwards. The compiled kernels
+> are tied to the exact JAX version they were built against, and JAX does not
+> promise that interface stays compatible between releases.
+>
+> ```bash
+> pip install --force-reinstall --no-binary pfcuda pfcuda
+> ```
 
 ---
 
@@ -116,9 +127,19 @@ functions remain usable when it did not.
 
 ## 📚 API Reference
 
-All inputs must be **square, skew-symmetric and of even dimension**. Odd
-dimensions return zero from `pfaffian`, `(-inf, 0)` from `slog_pfaffian` and
-`0.0` from `pfaffian_py`; `pfaffian_cpu` raises `RuntimeError` instead.
+Every input must be **square, skew-symmetric (`A == -A.T`), and have an even
+number of rows**. The Pfaffian of an odd-sized matrix is zero, and each
+function says so differently: `pfaffian` returns `0`, `slog_pfaffian` returns
+`(-inf, 0)`, `pfaffian_py` returns `0.0`, and `pfaffian_cpu` raises
+`RuntimeError`.
+
+**Which one should you use?** `pfaffian` for matrices up to 32×32 on a GPU,
+`slog_pfaffian` for anything larger, and the CPU functions when there is no GPU
+or the matrix is small enough that a GPU is not worth it.
+
+`slog_pfaffian` returns the logarithm rather than the value for a concrete
+reason: past roughly n=500 the Pfaffian is too large for a double to hold, so
+returning it directly would give you infinity.
 
 | Function | Backend | Dtypes | Size | Returns |
 | --- | --- | --- | --- | --- |
@@ -127,38 +148,60 @@ dimensions return zero from `pfaffian`, `(-inf, 0)` from `slog_pfaffian` and
 | `pfaffian_cpu(A)` | CPU (C++) | `float64` only | any even | `Pf(A)` |
 | `pfaffian_py(A)` | CPU (NumPy) | any NumPy float dtype | any even | `Pf(A)` |
 
-Two behaviours worth knowing:
+Two traps worth knowing about:
 
-- **`pfaffian_cpu` is float64-only.** Other dtypes are cast on the way in, so
-  complex input silently loses its imaginary part. Use `pfaffian` for complex
-  matrices.
-- **`pfaffian_cpu` and `pfaffian_py` overwrite their input** for `n > 4`. Pass a
-  copy if you still need the matrix.
+- **`pfaffian_cpu` only does float64.** Anything else gets converted on the way
+  in, so a complex matrix silently loses its imaginary part and you get a wrong
+  answer with no error. Use `pfaffian` for complex matrices.
+- **The two CPU functions destroy the matrix you pass them** when `n > 4`; they
+  factor it in place. Pass `A.copy()` if you still need it afterwards.
 
-`pfaffian` and `slog_pfaffian` define custom JVP rules, so they work under
-`jax.grad`, `jax.jit` and `jax.vmap`.
+Both GPU functions are differentiable, so `jax.grad`, `jax.jit` and `jax.vmap`
+work on them.
 
 ---
 
-## 📊 Benchmarks vs. Lrux
+## 📊 Benchmarks
 
-Comparison against [Lrux](https://pypi.org/project/lrux/), an existing
-JAX-based library. Scripts are in `benchmarking/`; raw data in `benchmarks/`.
-All times are **milliseconds per call**, measured end to end from Python
-(so they include JAX dispatch overhead, not kernel time alone).
+Against [lrux](https://pypi.org/project/lrux/) (JAX),
+[TorchPfaffian](https://github.com/MatchCake/TorchPfaffian) (PyTorch) and
+[pfapack](https://pypi.org/project/pfapack/) (the established CPU
+implementation). All float64, on an NVIDIA GTX 1660 SUPER.
+
+Timings are the **median milliseconds one call takes**, measured the way you
+would actually use it: hand the function a NumPy matrix and wait for the
+answer. That includes the overhead JAX and PyTorch add on top of the maths,
+because you pay for that too.
+
+Accuracy is how far each result sits from `0.5 × logabsdet`, averaged over 20
+different matrices at each size. [benchmarking/README.md](benchmarking/README.md)
+explains the full method.
 
 ![pfaffian() benchmark](benchmarks/pfaffian_comparison.png)
 ![slog_pfaffian() benchmark](benchmarks/slog_pfaffian_comparison.png)
 
-**Small matrices — `pfaffian`, n = 2…32.** PfCUDA leads by 9.8× at n=2
-(0.168 ms vs 1.639 ms), narrowing to 1.16× at n=32 (3.07 ms vs 3.56 ms).
+**Large matrices — `slog_pfaffian`.** lrux is quicker up to around n=1024.
+Past that point PfCUDA pulls ahead, and the gap widens fast:
 
-**Large matrices — `slog_pfaffian`, n = 100…4900.** Lrux is faster at n=100
-(10.2 ms vs 3.1 ms); PfCUDA overtakes it between n=100 and n=500 and pulls
-ahead from there, reaching 20.4× at n=4900 (997.6 ms vs 20 369.9 ms).
+| n | PfCUDA | lrux | TorchPfaffian |
+| --- | --- | --- | --- |
+| 1024 | 113 ms | 135 ms | 512 ms |
+| 2048 | **215 ms** | 911 ms | 842 ms |
+| 4096 | **644 ms** | 7245 ms | 4509 ms |
 
-**Accuracy.** Log-accuracy error stays between 10⁻¹¹ and 10⁻¹⁶ across all sizes
-for both libraries.
+At n=4096 PfCUDA is 11.3× faster than lrux and 7.0× faster than TorchPfaffian.
+
+**Small matrices — `pfaffian`, n = 2…32.** PfCUDA takes 0.17 ms up to n=4,
+where it uses a direct formula, and 2.3–4.1 ms above that. lrux takes
+1.8–7.6 ms and TorchPfaffian 0.3–13.5 ms.
+
+At these sizes the actual arithmetic is trivial; almost all the time goes on
+getting the work to the GPU and back. **pfapack on the CPU beats every GPU
+implementation here** at 0.03–0.43 ms. A GPU only starts paying off around
+n=256.
+
+**Accuracy.** All four land within 10⁻¹⁴ to 10⁻¹¹ of the reference at every
+size. Nobody is buying speed by cutting precision.
 
 ---
 
@@ -175,9 +218,9 @@ for both libraries.
 
 ## 🧑‍💻 Development
 
-Use the `./dev` driver rather than `pip install .`. It builds the libraries
-directly into `pfcuda/`, so an incremental rebuild takes about 5 seconds
-instead of two minutes.
+If you are changing the code, use `./dev` instead of `pip install .`. It
+compiles straight into `pfcuda/`, so rebuilding after an edit takes about five
+seconds rather than two minutes.
 
 ```bash
 git clone https://github.com/Mou1z/PfCUDA.git
@@ -185,25 +228,29 @@ cd PfCUDA
 ./dev
 ```
 
-The first run creates `.venv`, picks the CUDA 12 or 13 `jax` plugin to match
-your driver, installs dependencies and configures CMake.
+The first run sets everything up: it creates `.venv`, works out whether your
+driver needs the CUDA 12 or CUDA 13 build of JAX, installs the dependencies and
+configures CMake. Later runs just rebuild what changed.
 
-| Command | Purpose |
+| Command | What it does |
 | --- | --- |
-| `./dev` | Build, then run the fast tests (~12 s) |
-| `./dev build` | Build only |
-| `./dev test` | Build, then run the full suite (~75 s) |
-| `./dev bench` | Build, then run the benchmarks |
-| `./dev doctor` | Report on the environment; changes nothing |
-| `./dev clean` | Remove build outputs (`--all` also removes `.venv`) |
+| `./dev` | Rebuild and run the fast tests (~17 s) |
+| `./dev build` | Rebuild only |
+| `./dev test` | Rebuild and run the whole suite (~2 min) |
+| `./dev bench` | Run the benchmarks (`--quick`, `--compare`) |
+| `./dev doctor` | Report on your environment; changes nothing |
+| `./dev clean` | Delete build outputs (`--all` also deletes `.venv`) |
 
-On Windows use `.\dev.ps1 <command>` from PowerShell, which forwards into WSL2.
-`./dev --help` lists the environment overrides. If something fails to build,
-`./dev doctor` reports what it found.
+On Windows, run `.\dev.ps1 <command>` from PowerShell and it forwards into
+WSL2. If a build fails, `./dev doctor` usually shows why. See
+[CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request.
 
 ---
 
 ## 📝 Citation
+
+Machine-readable metadata is in [CITATION.cff](CITATION.cff). To cite the work
+behind it:
 
 > **Muhammad Mouiz Ghouri**, *"Optimized Pfaffian Computation and Its
 > Differentiation: From CPU Implementations to GPU Acceleration"*,
@@ -211,8 +258,10 @@ On Windows use `.\dev.ps1 <command>` from PowerShell, which forwards into WSL2.
 
 ## 🤝 Contributing
 
-Issues and pull requests are welcome — particularly for broader dtype coverage
-on the CPU backend, additional GPU architectures, and benchmark comparisons.
+Issues and pull requests are welcome — especially wider dtype support on the
+CPU backend, more GPU architectures, and further benchmark comparisons. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for how to get set up, and please include
+`./dev doctor` output in bug reports.
 
 ## 📄 License
 

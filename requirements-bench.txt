@@ -1,0 +1,12 @@
+# Competitor libraries for ./dev bench, kept out of requirements.txt because
+# torch alone is several gigabytes and nothing else needs it.
+#
+# Install with:  ./dev bench   (handles this automatically)
+
+torch>=2.1
+
+# TorchPfaffian. 0.0.5 imports importlib_metadata without declaring it, so it
+# is listed here explicitly.
+torchpfaffian>=0.0.5
+importlib_metadata>=6.0
+

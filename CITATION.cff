@@ -1,0 +1,43 @@
+cff-version: 1.2.0
+title: "PfCUDA: GPU-accelerated Pfaffian computation for JAX"
+message: "If you use this software, please cite it using these metadata."
+type: software
+authors:
+  - given-names: Muhammad Mouiz
+    family-names: Ghouri
+    affiliation: "Eötvös Loránd University, Budapest, Hungary"
+    # orcid: "https://orcid.org/0000-0000-0000-0000"  # TODO: add your ORCID
+repository-code: "https://github.com/Mou1z/PfCUDA"
+url: "https://github.com/Mou1z/PfCUDA"
+license: MIT
+version: 0.1.2
+date-released: 2026-09-20
+keywords:
+  - pfaffian
+  - skew-symmetric matrices
+  - CUDA
+  - GPU
+  - JAX
+  - linear algebra
+references:
+  - type: thesis
+    title: "Optimized Pfaffian Computation and Its Differentiation: From CPU Implementations to GPU Acceleration"
+    authors:
+      - given-names: Muhammad Mouiz
+        family-names: Ghouri
+    institution:
+      name: "Eötvös Loránd University"
+    location:
+      name: "Budapest, Hungary"
+    year: 2026
+    thesis-type: "Bachelor's thesis"
+  - type: article
+    title: "Efficient numerical computation of the Pfaffian for dense and banded skew-symmetric matrices"
+    authors:
+      - given-names: M.
+        family-names: Wimmer
+    journal: "ACM Transactions on Mathematical Software"
+    volume: 38
+    issue: 4
+    year: 2012
+    doi: "10.1145/2331130.2331138"

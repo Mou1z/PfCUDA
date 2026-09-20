@@ -6,7 +6,7 @@
 #   ./dev build        build only
 #   ./dev test         build, then run the full suite
 #   ./dev test [args]  build, then run pytest with your own arguments
-#   ./dev bench [args] run the benchmark scripts
+#   ./dev bench [args] run the benchmarks (--quick, --compare, --accept)
 #   ./dev doctor       report on the environment, change nothing
 #   ./dev shell        print an eval-able line to activate the venv
 #   ./dev clean        remove build outputs (keeps the venv)
@@ -298,15 +298,30 @@ cmd_fast_test() {
     "$PY" -m pytest -q -m "not slow"
 }
 
+# The competitor libraries are several gigabytes and only ./dev bench needs
+# them, so they are installed on first use rather than with everything else.
+ensure_bench_deps() {
+    local want stamp
+    want=$(cksum < "$REPO_ROOT/requirements-bench.txt")
+    stamp="$STAMPS/bench-deps"
+
+    if [ -f "$stamp" ] && [ "$(cat "$stamp")" = "$want" ]; then
+        skip "benchmark dependencies"
+        return
+    fi
+
+    say "Installing benchmark dependencies (torch and competitors, several GB)"
+    "$PY" -m pip install --quiet -r "$REPO_ROOT/requirements-bench.txt"
+    mkdir -p "$STAMPS"
+    printf '%s' "$want" > "$stamp"
+    ok "benchmark dependencies installed"
+}
+
 cmd_bench() {
     cmd_build
+    ensure_bench_deps
     say "Running benchmarks"
-    if [ $# -gt 0 ]; then
-        "$PY" "$@"
-    else
-        "$PY" benchmarking/benchmark_pfaffian.py
-        "$PY" benchmarking/benchmark_slog_pfaffian.py
-    fi
+    "$PY" -m benchmarking.run "$@"
 }
 
 cmd_doctor() {

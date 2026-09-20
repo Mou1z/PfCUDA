@@ -12,3 +12,7 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 dist/
+
+# Benchmark output: regenerated on every run. The baseline JSONs and the
+# published figures are tracked; the per-run snapshots are not.
+benchmarks/*_latest.json
