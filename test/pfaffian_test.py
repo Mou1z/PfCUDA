@@ -1,110 +1,88 @@
-import pytest
+"""GPU pfaffian(), matrices up to 32x32.
+
+Only tests that reach a kernel are marked gpu; the size guard and the n <= 4
+closed forms are pure Python.
+"""
+
 import numpy as np
+import pytest
 
-import jax
 import jax.numpy as jnp
-
-jax.config.update("jax_enable_x64", True)
-
 from pfapack.pfaffian import pfaffian as pfapack_pfaffian
+
+from helpers import known_pfaffian_case, sized, skew
 from pfcuda import pfaffian
 
-def pfaffian_tridiag(upper_diag):
-    n = len(upper_diag) + 1
-    if n % 2 == 1:
-        return 0.0
-    return np.prod(upper_diag[0::2])
+SIZES = sized(fast={2, 4, 8, 16, 32}, full=range(2, 33, 2))
 
-def create_orthogonal_matrix_np(n, rng):
-    A = rng.normal(size=(n, n))
 
-    Q, R = np.linalg.qr(A)
+@pytest.mark.gpu
+@pytest.mark.parametrize("n", sized(fast={2, 8, 18}, full=range(2, 20, 2)))
+def test_zero_matrix(n):
+    assert pfaffian(np.zeros((n, n))) == 0.0
 
-    d = np.diag(R)
-    Q = Q * np.sign(d)
 
-    return Q
+@pytest.mark.parametrize("n", [1, 3, 5, 11, 15])
+def test_odd_dimension(n):
+    A = skew(n, np.random.default_rng(0))
+    assert np.isclose(pfaffian(A), 0.0, atol=1e-12)
 
-def test_pfaffian_zero_matrix():
-    for n in range(2, 20, 2):
-        A = np.zeros((n, n))
-        pf = pfaffian(A)
 
-        assert pf == 0.0
+@pytest.mark.parametrize("a", [0.0, 1.0, -3.5, 1e-12, 1e10])
+def test_2x2_is_the_off_diagonal(a):
+    A = np.array([[0, a], [-a, 0]], dtype=np.float64)
+    assert np.isclose(pfaffian(A), a)
 
-def test_pfaffian_odd_dimension():
-    rng = np.random.default_rng(0)
 
-    for n in [1, 3, 5, 11, 15]:
-        A = rng.normal(size=(n, n))
-        A = A - A.T  # skew-symmetric
+def test_4x4_closed_form():
+    A = np.array(
+        [
+            [0.0, 1.0, 2.0, 3.0],
+            [-1.0, 0.0, 4.0, 5.0],
+            [-2.0, -4.0, 0.0, 6.0],
+            [-3.0, -5.0, -6.0, 0.0],
+        ]
+    )
+    # 1*6 - 2*5 + 3*4 = 8
+    assert np.isclose(pfaffian(jnp.array(A)), 8.0)
 
-        pf = pfaffian(A)
 
-        assert np.isclose(pf, 0.0, atol=1e-12)
+@pytest.mark.gpu
+@pytest.mark.parametrize("n", SIZES)
+def test_det_relation(n):
+    A = skew(n, np.random.default_rng(1))
+    assert np.isclose(pfaffian(A) ** 2, np.linalg.det(A), rtol=1e-8, atol=1e-10)
 
-def test_pfaffian_2x2():
-    values = [0.0, 1.0, -3.5, 1e-12, 1e10]
 
-    for a in values:
-        A = np.array([[0, a], [-a, 0]], dtype=np.float64)
-        pf = pfaffian(A)
-
-        assert np.isclose(pf, a)
-
-def test_pfaffian_det_relation():
-    rng = np.random.default_rng(1)
-
-    for n in range(2, 33, 2):
-        A = rng.normal(size=(n, n))
-        A = A - A.T
-
-        pf = pfaffian(A)
-        det = np.linalg.det(A)
-
-        assert np.isclose(pf * pf, det, rtol=1e-8, atol=1e-10)
-
-def test_pfaffian_random():
+@pytest.mark.gpu
+@pytest.mark.parametrize("n", SIZES)
+def test_matches_pfapack(n, samples):
     rng = np.random.default_rng(123)
+    for i in range(samples):
+        A = skew(n, rng)
+        assert np.allclose(
+            pfapack_pfaffian(A), pfaffian(jnp.array(A)), rtol=1e-8, atol=1e-10
+        ), f"sample {i}"
 
-    for n in range(2, 33, 2):
-        for _ in range(20):
-            A = rng.normal(size=(n, n))
-            A = A - A.T
 
-            pf_ref = pfapack_pfaffian(A)
-            pf_test = pfaffian(jnp.array(A))
+@pytest.mark.gpu
+@pytest.mark.parametrize("n", SIZES)
+def test_matches_known_pfaffian(n, samples):
+    rng = np.random.default_rng(0)
+    for i in range(samples):
+        A, expected = known_pfaffian_case(n, rng)
+        assert np.isclose(
+            pfaffian(A), expected, rtol=1e-10, atol=1e-12
+        ), f"sample {i}"
 
-            assert np.allclose(pf_ref, pf_test, rtol=1e-8, atol=1e-10)
 
-def test_pfaffian_by_identity():
-    rng = np.random.default_rng(seed=0)
+def test_rejects_oversized_matrix():
+    A = skew(34, np.random.default_rng(0))
+    with pytest.raises(ValueError, match="maximum supported size"):
+        pfaffian(jnp.array(A))
 
-    for n in range(2, 33, 2):
-        for _ in range(10):
-            main_diagonal = np.zeros(n)
 
-            alt_diagonal = 1.0 + rng.normal(size=(n - 1,))
-
-            mask = 1 - (np.arange(n - 1) % 2)
-            alt_diagonal = alt_diagonal * mask
-
-            A = (
-                np.diag(alt_diagonal, k=1)
-                + np.diag(main_diagonal)
-                - np.diag(alt_diagonal, k=-1)
-            )
-
-            pf_A = pfaffian_tridiag(alt_diagonal)
-
-            B = create_orthogonal_matrix_np(n, rng)
-
-            calculated_pfaffian = pfaffian(B @ A @ B.T)
-            expected_pfaffian = np.linalg.det(B) * pf_A
-
-            assert np.isclose(
-                expected_pfaffian,
-                calculated_pfaffian,
-                rtol=1e-10,
-                atol=1e-12
-            )
+def test_rejects_unsupported_dtype():
+    A = skew(8, np.random.default_rng(0)).astype(np.int64)
+    with pytest.raises(TypeError, match="does not support"):
+        pfaffian(jnp.array(A))

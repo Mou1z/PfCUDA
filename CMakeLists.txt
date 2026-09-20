@@ -1,14 +1,9 @@
 cmake_minimum_required(VERSION 3.18)
 
-# Build for every major architecture the installed toolkit supports. `native`
-# would be smaller and faster to compile, but nvcc only warns when it cannot
-# see a GPU ("Cannot find valid GPU for '-arch=native', default arch is used")
-# and then targets its default, so builds on GPU-less machines -- containers,
-# CI, HPC login nodes -- would silently produce a binary that fails on the
-# card it eventually runs on. A fixed list is not portable either, since CUDA
-# 13 dropped everything below sm_75; all-major asks nvcc what it supports.
-# ./dev overrides this with `native` for fast local iteration.
-# Must be decided before project(), which consumes it during compiler detection.
+# Where no GPU is visible at build time, -arch=native only warns and falls back
+# to nvcc's default, yielding a binary that fails on the target card. A fixed
+# architecture list is not portable either, since CUDA 13 dropped everything
+# below sm_75, so query the toolkit instead. Read by project() below.
 if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
     if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.23)
         set(CMAKE_CUDA_ARCHITECTURES all-major)
@@ -17,9 +12,8 @@ if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
     endif()
 endif()
 
-# A plain `pip install .` runs with whatever PATH the user's shell has, and a
-# CUDA Toolkit installed outside PATH is the common case. Look in the usual
-# places before project() gives up with "CUDA compiler identification unknown".
+# pip install runs with the user's PATH, which commonly lacks nvcc. Search the
+# usual install locations before project() fails on compiler detection.
 if(NOT DEFINED CMAKE_CUDA_COMPILER AND NOT DEFINED ENV{CUDACXX})
     find_program(PFCUDA_NVCC nvcc
         HINTS ENV CUDA_HOME ENV CUDA_PATH ENV CUDA_ROOT /usr/local/cuda /opt/cuda
@@ -43,16 +37,20 @@ project(cu_pfaffian LANGUAGES CXX CUDA)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CUDA_STANDARD 17)
 
+# Optimisation comes from the build type, so a bare `cmake ..` must not be unoptimised.
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+endif()
+
 # Drops the built libraries into the source package so `import pfcuda` needs no
 # install step. Off for wheel builds, which stage them through install() below.
 option(PFCUDA_DEV_INPLACE "Write built libraries into the source pfcuda/ package" OFF)
 
-# Build GPU implementation's object file
 find_package(CUDAToolkit REQUIRED)
 
-# Resolve the interpreter that owns jax and pybind11. scikit-build-core presets
-# Python_EXECUTABLE during `pip install`; ./dev passes it explicitly. Falling
-# back to a bare `python3` would find the system interpreter, which has no jax.
+# The interpreter that owns jax and pybind11: preset by scikit-build-core during
+# pip install, passed explicitly by ./dev. A bare `python3` would resolve to the
+# system interpreter, which has no jax.
 find_package(Python COMPONENTS Interpreter Development.Module REQUIRED)
 
 execute_process(
@@ -105,13 +103,13 @@ target_link_libraries(cu_pfaffian_lib PRIVATE
     CUDA::cudart
 )
 
+# -O3 comes from the build type. Forcing it here, or fast-math, would leave a
+# Debug build optimised and reassociated.
 target_compile_options(cu_pfaffian_lib PRIVATE
-    $<$<COMPILE_LANGUAGE:CUDA>:-O3 --use_fast_math>
-    $<$<COMPILE_LANGUAGE:CXX>:-O3>
+    $<$<AND:$<COMPILE_LANGUAGE:CUDA>,$<NOT:$<CONFIG:Debug>>>:--use_fast_math>
 )
 
 
-# Build CPU implementation's object file
 # Prefer the pybind11 shipped with Python_EXECUTABLE over any system-wide copy,
 # so the extension module matches the interpreter that will import it.
 if(NOT pybind11_DIR)
@@ -123,8 +121,8 @@ if(NOT pybind11_DIR)
     )
 endif()
 
-# Let pybind11 use FindPython (and therefore Python_EXECUTABLE) rather than the
-# deprecated PythonInterp path, unless a build backend already chose for us.
+# Use FindPython, and so Python_EXECUTABLE, rather than the deprecated
+# PythonInterp path, unless the build backend already set this.
 if(NOT DEFINED PYBIND11_FINDPYTHON)
     set(PYBIND11_FINDPYTHON ON)
 endif()
@@ -138,8 +136,6 @@ pybind11_add_module(pfaffian_lib
 target_include_directories(pfaffian_lib PRIVATE
     include
 )
-
-target_compile_options(pfaffian_lib PRIVATE -O3)
 
 set_target_properties(pfaffian_lib PROPERTIES
     OUTPUT_NAME "cpupfaffian"

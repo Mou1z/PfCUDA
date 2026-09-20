@@ -1,8 +1,8 @@
-# Development dependencies for PfCUDA, installed by ./dev.
+# Development dependencies, installed by ./dev.
 #
-# jax is deliberately absent: the CUDA 12 and CUDA 13 plugins are separate
-# wheels and the right one depends on your driver, so ./dev detects and
-# installs it before reading this file. Override with PFCUDA_JAX_CUDA=12.
+# jax is absent by design: the CUDA 12 and CUDA 13 plugins are separate wheels
+# chosen from the driver, so ./dev installs it before reading this file.
+# Override with PFCUDA_JAX_CUDA=12.
 
 # build
 pybind11>=2.10

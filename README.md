@@ -117,7 +117,8 @@ functions remain usable when it did not.
 ## 📚 API Reference
 
 All inputs must be **square, skew-symmetric and of even dimension**. Odd
-dimensions return zero (`pfaffian`) or `(-inf, 0)` (`slog_pfaffian`).
+dimensions return zero from `pfaffian`, `(-inf, 0)` from `slog_pfaffian` and
+`0.0` from `pfaffian_py`; `pfaffian_cpu` raises `RuntimeError` instead.
 
 | Function | Backend | Dtypes | Size | Returns |
 | --- | --- | --- | --- | --- |
@@ -189,8 +190,9 @@ your driver, installs dependencies and configures CMake.
 
 | Command | Purpose |
 | --- | --- |
-| `./dev` | Incremental build |
-| `./dev test` | Build, then run the test suite |
+| `./dev` | Build, then run the fast tests (~12 s) |
+| `./dev build` | Build only |
+| `./dev test` | Build, then run the full suite (~75 s) |
 | `./dev bench` | Build, then run the benchmarks |
 | `./dev doctor` | Report on the environment; changes nothing |
 | `./dev clean` | Remove build outputs (`--all` also removes `.venv`) |

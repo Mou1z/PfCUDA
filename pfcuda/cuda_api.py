@@ -21,12 +21,10 @@ _cuda_backend = None
 
 
 def _require_cuda_backend():
-    """Fail with an actionable message instead of 'No FFI handler registered'.
+    """Report a missing CUDA jaxlib instead of 'No FFI handler registered'.
 
-    Plain `jax` is CPU-only and installs happily alongside compiled kernels, so
-    this is the likeliest way for a working install to still not run. Probed on
-    first use rather than at import, to avoid initialising a JAX backend as a
-    side effect of `import pfcuda`.
+    Probed on first use rather than at import, so that `import pfcuda` does not
+    initialise a JAX backend as a side effect.
     """
     global _cuda_backend
     if _cuda_backend is None:
@@ -42,12 +40,24 @@ def _require_cuda_backend():
         )
 
 
-TYPE_MAPPINGS = {
-    jnp.dtype(jnp.float32): '_f32',
-    jnp.dtype(jnp.float64): '_f64',
-    jnp.dtype(jnp.complex64): '_c64',
-    jnp.dtype(jnp.complex128): '_c128'
+# Per input dtype: FFI handler suffix, and the width of log|Pf|, which mirrors
+# ProjectionType<T> in include/pfaffian_utils.cuh.
+DTYPES = {
+    jnp.dtype(jnp.float32): ('_f32', jnp.float32),
+    jnp.dtype(jnp.float64): ('_f64', jnp.float64),
+    jnp.dtype(jnp.complex64): ('_c64', jnp.float32),
+    jnp.dtype(jnp.complex128): ('_c128', jnp.float64)
 }
+
+
+def _dispatch(A):
+    try:
+        return DTYPES[A.dtype]
+    except KeyError:
+        raise TypeError(
+            f'pfcuda does not support {A.dtype}; supported dtypes are '
+            + ', '.join(str(d) for d in DTYPES)
+        ) from None
 
 @jax.custom_jvp
 def pfaffian(A):
@@ -69,10 +79,11 @@ def pfaffian(A):
     if n > 32:
         raise ValueError("Matrix size exceeds the maximum supported size of 32x32.")
 
+    suffix, _ = _dispatch(A)
     _require_cuda_backend()
 
     func = jax.ffi.ffi_call(
-        'pfaffian' + TYPE_MAPPINGS[A.dtype],
+        'pfaffian' + suffix,
         jax.ShapeDtypeStruct((), A.dtype),
         input_layouts=[(1, 0)],
         vmap_method='broadcast_all'
@@ -87,50 +98,55 @@ def slog_pfaffian(A):
     if n <= 32:
         raise ValueError("Matrix size is less than the minimum supported size of (33x33). Use pfaffian() for smaller matrices.")
 
+    suffix, real_dtype = _dispatch(A)
+
     if n & 1:
         return (
-            jnp.array(-jnp.inf, dtype=jnp.float64),
+            jnp.array(-jnp.inf, dtype=real_dtype),
             jnp.array(0, dtype=A.dtype)
         )
 
     _require_cuda_backend()
 
     func = jax.ffi.ffi_call(
-        'slog_pfaffian' + TYPE_MAPPINGS[A.dtype],
-        (jax.ShapeDtypeStruct((), jnp.float64), jax.ShapeDtypeStruct((), A.dtype)),
+        'slog_pfaffian' + suffix,
+        (jax.ShapeDtypeStruct((), real_dtype), jax.ShapeDtypeStruct((), A.dtype)),
         input_layouts=[(1, 0)],
         vmap_method='broadcast_all'
     )
 
     return func(A)
 
+def _dlog_pfaffian(A, A_dot):
+    """d(log Pf) = tr(A^-1 @ A_dot) / 2, without forming the n x n product."""
+    return 0.5 * jnp.einsum('ij,ji->', jnp.linalg.inv(A), A_dot)
+
+
 @pfaffian.defjvp
 def pfaffian_jvp(primals, tangents):
     (A,) = primals
     (A_dot,) = tangents
+
     primal_out = pfaffian(A)
-
-    A_inv = jnp.linalg.inv(A)
-
-    product = jnp.matmul(A_inv, A_dot)
-    product = primal_out * product
-
-    tangent_out = 0.5 * jnp.linalg.trace(product)
-    return primal_out, tangent_out
+    return primal_out, primal_out * _dlog_pfaffian(A, A_dot)
 
 
 @slog_pfaffian.defjvp
 def slog_pfaffian_jvp(primals, tangents):
     (A,) = primals
     (A_dot,) = tangents
-    
+
     log_mag, sign = slog_pfaffian(A)
-    primal_out = (log_mag, sign)
-    
-    A_inv = jnp.linalg.inv(A)
-    
-    tangent_log_mag = 0.5 * jnp.trace(jnp.matmul(A_inv, A_dot))
-    tangent_sign = jnp.zeros_like(sign)
-    
-    tangent_out = (tangent_log_mag, tangent_sign)
-    return primal_out, tangent_out
+
+    # d(log Pf) splits into d(log|Pf|) = Re and d(arg Pf) = Im. The phase term
+    # matters only for complex input, where sign is a unit complex number
+    # rather than +-1; for real input Im vanishes.
+    dlog = _dlog_pfaffian(A, A_dot)
+    tangent_log_mag = jnp.real(dlog).astype(log_mag.dtype)
+
+    if jnp.issubdtype(sign.dtype, jnp.complexfloating):
+        tangent_sign = 1j * sign * jnp.imag(dlog)
+    else:
+        tangent_sign = jnp.zeros_like(sign)
+
+    return (log_mag, sign), (tangent_log_mag, tangent_sign)

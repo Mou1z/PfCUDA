@@ -1,0 +1,148 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # One architecture keeps CI compiles short. The packaging job deliberately
+  # uses the project default instead, to exercise the path users install by.
+  CI_CUDA_ARCH: "75"
+
+jobs:
+  build:
+    # GitHub runners have no GPU, but nvcc does not need one to compile. The
+    # matrix covers both CUDA majors because CUDA 13 dropped every architecture
+    # below sm_75, so a toolkit-specific break would otherwise go unnoticed.
+    name: build (CUDA ${{ matrix.cuda }})
+    runs-on: ubuntu-latest
+    container: nvidia/cuda:${{ matrix.cuda }}-devel-ubuntu24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        cuda: ["12.6.3", "13.0.1"]
+
+    steps:
+      - name: Install prerequisites
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            ca-certificates cmake g++ git ninja-build python3-dev python3-venv
+
+      - uses: actions/checkout@v7
+
+      - name: Create environment
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install --quiet --upgrade pip
+          # Only the CPU jaxlib is needed: the build consumes its XLA FFI
+          # headers, not its runtime.
+          .venv/bin/pip install --quiet jax jaxlib pybind11
+
+      - name: Configure
+        run: |
+          cmake -S . -B build -G Ninja -Wno-dev \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DPython_EXECUTABLE="$PWD/.venv/bin/python" \
+            -DCMAKE_CUDA_ARCHITECTURES="$CI_CUDA_ARCH"
+
+      - name: Build
+        run: cmake --build build -j"$(nproc)"
+
+  test:
+    name: CPU tests
+    runs-on: ubuntu-latest
+    container: nvidia/cuda:13.0.1-devel-ubuntu24.04
+
+    steps:
+      - name: Install prerequisites
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            ca-certificates cmake g++ git ninja-build python3-dev python3-venv
+
+      - uses: actions/checkout@v7
+
+      - name: Create environment
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install --quiet --upgrade pip
+          .venv/bin/pip install --quiet jax jaxlib pybind11 -r requirements.txt
+
+      - name: Build in place
+        run: |
+          cmake -S . -B build -G Ninja -Wno-dev \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DPython_EXECUTABLE="$PWD/.venv/bin/python" \
+            -DCMAKE_CUDA_ARCHITECTURES="$CI_CUDA_ARCH" \
+            -DPFCUDA_DEV_INPLACE=ON
+          cmake --build build -j"$(nproc)"
+
+      - name: Run the tests that do not need a GPU
+        run: .venv/bin/python -m pytest -q -m "not gpu" --durations=10
+
+  package:
+    name: Package
+    runs-on: ubuntu-latest
+    container: nvidia/cuda:13.0.1-devel-ubuntu24.04
+
+    steps:
+      - name: Install prerequisites
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            ca-certificates cmake g++ git ninja-build python3-dev python3-venv
+
+      - uses: actions/checkout@v7
+
+      - name: Build and check the source distribution
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install --quiet --upgrade pip
+          .venv/bin/pip install --quiet build twine
+          .venv/bin/python -m build --sdist
+          .venv/bin/twine check dist/*.tar.gz
+
+      - name: Install the sdist into a clean environment
+        # No CUDA_HOME and no nvcc on PATH: this is what a user's shell looks
+        # like, and it also exercises the GPU-less multi-architecture build.
+        run: |
+          python3 -m venv /tmp/clean
+          /tmp/clean/bin/pip install --quiet --upgrade pip
+          env -u CUDA_HOME -u CUDACXX PATH=/usr/bin:/bin \
+            /tmp/clean/bin/pip install dist/*.tar.gz
+
+      - name: Smoke-test the installed package
+        # Run from elsewhere so the import resolves to the installed copy
+        # rather than the source tree.
+        working-directory: /tmp
+        run: |
+          /tmp/clean/bin/python - <<'PY'
+          import numpy as np
+          import pfcuda
+
+          rng = np.random.default_rng(0)
+          A = rng.normal(size=(8, 8))
+          A = A - A.T
+
+          assert np.isclose(pfcuda.pfaffian_cpu(A.copy()) ** 2, np.linalg.det(A))
+          assert np.isclose(pfcuda.pfaffian_py(A.copy()) ** 2, np.linalg.det(A))
+
+          # CPU-only jaxlib here, so the GPU entry point must explain itself
+          # rather than fail with "No FFI handler registered".
+          import jax.numpy as jnp
+          try:
+              pfcuda.pfaffian(jnp.array(A))
+          except RuntimeError as exc:
+              assert "CUDA-enabled jaxlib" in str(exc), exc
+          else:
+              raise AssertionError("expected a RuntimeError without a CUDA jaxlib")
+
+          print("smoke test passed")
+          PY

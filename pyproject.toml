@@ -50,6 +50,9 @@ build-dir = "build/{wheel_tag}"
 
 [tool.pytest.ini_options]
 testpaths = ["test"]
+# So the test modules can import test/helpers.py.
+pythonpath = ["test"]
 markers = [
-    "slow: long-running cases; excluded by default in the fast tier",
+    "gpu: needs a CUDA device; skipped automatically when none is present",
+    "slow: long-running; excluded from the fast tier that bare ./dev runs",
 ]

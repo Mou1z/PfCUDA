@@ -1,10 +1,8 @@
 from .cpp_api import pfaffian_cpu
 from .pfaffian_py import pfaffian_py
 
-# The GPU backend needs a working CUDA runtime and a CUDA-enabled jaxlib, which
-# a CPU-only machine will not have. Import it lazily so pfaffian_cpu and
-# pfaffian_py stay usable there, and report the original cause if the GPU
-# functions are then called.
+# Imported lazily so the CPU backends stay usable without a CUDA runtime or a
+# CUDA-enabled jaxlib. Calling a GPU function then reports the original cause.
 try:
     from .cuda_api import pfaffian, slog_pfaffian
 

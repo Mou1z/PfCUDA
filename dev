@@ -2,8 +2,10 @@
 #
 # PfCUDA development driver.
 #
-#   ./dev              incremental build (the common case)
-#   ./dev test [args]  pytest (extra args are forwarded)
+#   ./dev              build, then run the fast tests (the common case)
+#   ./dev build        build only
+#   ./dev test         build, then run the full suite
+#   ./dev test [args]  build, then run pytest with your own arguments
 #   ./dev bench [args] run the benchmark scripts
 #   ./dev doctor       report on the environment, change nothing
 #   ./dev shell        print an eval-able line to activate the venv
@@ -46,8 +48,8 @@ die() {
     exit 1
 }
 
-# Object files are thousands of small writes. On a WSL drvfs/9p share that is an
-# order of magnitude slower than a native path, so relocate off the share.
+# Object files are thousands of small writes, an order of magnitude slower on a
+# WSL drvfs/9p share than on a native path, so relocate off the share.
 pick_build_dir() {
     if [ -n "${PFCUDA_BUILD_DIR:-}" ]; then
         printf '%s' "$PFCUDA_BUILD_DIR"; return
@@ -106,8 +108,8 @@ detect_jax_cuda() {
     esac
 }
 
-# Prefer the distro default: a bleeding-edge interpreter is the one least
-# likely to have jax CUDA wheels published for it yet.
+# Prefer the distro default: the newest interpreter is the least likely to have
+# jax CUDA wheels published for it.
 host_python() {
     local c
     for c in python3 python3.12 python3.13 python3.11 python3.10 python3.9; do
@@ -212,8 +214,8 @@ ensure_deps() {
 }
 
 # Put the repo on sys.path so `import pfcuda` resolves to the source tree, where
-# the build drops its .so files. A copy left in site-packages by an earlier
-# `pip install .` would shadow it, so remove that first.
+# the build writes its .so files. A copy left in site-packages by `pip install .`
+# would shadow it, so remove that first.
 link_repo() {
     local purelib pth
     purelib=$("$PY" -c 'import sysconfig; print(sysconfig.get_path("purelib"))')
@@ -280,8 +282,20 @@ cmd_build() {
 
 cmd_test() {
     cmd_build
-    say "Running tests"
-    "$PY" -m pytest "$@"
+    if [ $# -gt 0 ]; then
+        say "Running tests"
+        "$PY" -m pytest --samples=20 "$@"
+    else
+        say "Running the full suite"
+        "$PY" -m pytest -q --samples=20
+    fi
+}
+
+# What bare ./dev runs: everything except the long sweeps.
+cmd_fast_test() {
+    cmd_build
+    say "Running fast tests"
+    "$PY" -m pytest -q -m "not slow"
 }
 
 cmd_bench() {
@@ -395,10 +409,11 @@ reject_args() {
     [ $# -eq 0 ] || die "./dev $name takes no arguments (got: $*)" "Run ./dev --help for usage."
 }
 
-cmd="${1:-build}"
+cmd="${1:-fast}"
 if [ $# -gt 0 ]; then shift; fi
 
 case "$cmd" in
+    fast)   reject_args "with no command" "$@"; cmd_fast_test ;;
     build)  reject_args build "$@";  cmd_build ;;
     test)   cmd_test "$@" ;;
     bench)  cmd_bench "$@" ;;
